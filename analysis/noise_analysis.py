@@ -54,3 +54,47 @@ def compute_entropy(probs_steps, eps=1e-9):
 
     return entropy_steps
 
+
+def compute_confident_mistakes(probs_steps, confidence_steps, ground_truth_ids, mask_positions, threshold=0.9):
+    """
+    Identify confident mistakes
+
+    Args:
+        probs_steps: list of tensors [batch, seq_len, vocab]
+        confidence_steps: list of tensors [batch, seq_len]
+        ground_truth_ids: tensor [batch, seq_len]
+        mask_positions: boolean tensor [batch, seq_len]
+        threshold: confidence threshold
+
+    Returns:
+        mistakes_per_step: list of counts
+        total_tokens_per_step: list of counts
+    """
+
+    mistakes_per_step = []
+    total_tokens_per_step = []
+
+    for step_idx in range(len(probs_steps)):
+
+        probs = probs_steps[step_idx]
+        confidence = confidence_steps[step_idx]
+
+        # predicted tokens (argmax)
+        pred_tokens = torch.argmax(probs, dim=-1)
+
+        # only evaluate masked positions
+        pred_masked = pred_tokens[mask_positions]
+        gt_masked = ground_truth_ids[mask_positions]
+        conf_masked = confidence[mask_positions]
+
+        # condition: high confidence but wrong
+        confident_wrong = (conf_masked > threshold) & (pred_masked != gt_masked)
+
+        mistakes = confident_wrong.sum().item()
+        total = mask_positions.sum().item()
+
+        mistakes_per_step.append(mistakes)
+        total_tokens_per_step.append(total)
+
+    return mistakes_per_step, total_tokens_per_step
+
