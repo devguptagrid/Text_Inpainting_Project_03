@@ -98,3 +98,35 @@ def compute_confident_mistakes(probs_steps, confidence_steps, ground_truth_ids, 
 
     return mistakes_per_step, total_tokens_per_step
 
+
+def aggregate_metrics(confidence_steps, entropy_steps, mask_positions):
+    """
+    Compute average confidence and entropy over masked tokens per timestep
+
+
+    Args:
+        confidence_steps: list of tensors [batch, seq_len]
+        entropy_steps: list of tensors [batch, seq_len]
+        mask_positions: tensor [batch, seq_len]
+
+    Returns:
+        avg_confidence: list of floats
+        avg_entropy: list of floats
+    """
+
+    avg_confidence = []
+    avg_entropy = []
+
+    for conf, ent in zip(confidence_steps, entropy_steps):
+
+        # select only masked positions
+        conf_masked = conf[mask_positions]
+        ent_masked = ent[mask_positions]
+
+        # compute averages
+        avg_confidence.append(conf_masked.mean().item())
+        avg_entropy.append(ent_masked.mean().item())
+
+    return avg_confidence, avg_entropy
+
+
