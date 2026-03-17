@@ -167,3 +167,48 @@ def compute_confidence_histogram(confidence_steps, mask_positions, threshold=0.9
 
     return step_counts
     
+
+
+def compute_entropy_by_correctness(probs_steps, entropy_steps, ground_truth_ids, mask_positions):
+    """
+    Split entropy into correct vs incorrect tokens
+
+    
+    Returns:
+        entropy_correct: list (avg per step)
+        entropy_incorrect: list (avg per step)
+    """
+
+    entropy_correct = []
+    entropy_incorrect = []
+
+    for step_idx in range(len(probs_steps)):
+
+        probs = probs_steps[step_idx]
+        entropy = entropy_steps[step_idx]
+
+        # predicted tokens
+        pred_tokens = torch.argmax(probs, dim=-1)
+
+        # apply mask
+        pred_masked = pred_tokens[mask_positions]
+        gt_masked = ground_truth_ids[mask_positions]
+        entropy_masked = entropy[mask_positions]
+
+        # correct vs incorrect
+        correct_mask = pred_masked == gt_masked
+        incorrect_mask = pred_masked != gt_masked
+
+        # avoid empty tensors
+        if correct_mask.sum() > 0:
+            entropy_correct.append(entropy_masked[correct_mask].mean().item())
+        else:
+            entropy_correct.append(0)
+
+        if incorrect_mask.sum() > 0:
+            entropy_incorrect.append(entropy_masked[incorrect_mask].mean().item())
+        else:
+            entropy_incorrect.append(0)
+
+    return entropy_correct, entropy_incorrect
+

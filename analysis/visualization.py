@@ -73,4 +73,25 @@ def plot_confidence_histogram(step_counts, total_tokens):
     plt.show()
     
 
+def plot_entropy_correct_vs_incorrect(entropy_correct, entropy_incorrect):
+    """
+    Plot entropy comparison for correct vs incorrect tokens
+    """
+
+    import matplotlib.pyplot as plt
+
+    steps = list(range(len(entropy_correct)))
+
+    plt.figure()
+    plt.plot(steps, entropy_correct, label="Correct Tokens")
+    plt.plot(steps, entropy_incorrect, label="Incorrect Tokens")
+
+    plt.xlabel("Diffusion Step")
+    plt.ylabel("Average Entropy")
+    plt.title("Entropy: Correct vs Incorrect Tokens")
+    plt.legend()
+    plt.show()
+    
+
+
     

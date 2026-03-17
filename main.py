@@ -323,6 +323,18 @@ if __name__ == "__main__":
         plot_confidence_histogram(step_counts, total_tokens)
 
 
+        from analysis.noise_analysis import compute_entropy_by_correctness
+        from analysis.visualization import plot_entropy_correct_vs_incorrect
+
+        entropy_correct, entropy_incorrect = compute_entropy_by_correctness(
+        probs_steps,
+        entropy_steps,
+        sample["target_ids"].unsqueeze(0).cpu(),
+        mask_positions_cpu
+        )
+
+        plot_entropy_correct_vs_incorrect(entropy_correct, entropy_incorrect)
+
         original_text = tokenizer.decode( ## Decodes the original target token IDs back into a human-readable string using the tokenizer, skipping any special tokens in the process.
             sample["target_ids"],
             skip_special_tokens=True
