@@ -130,3 +130,40 @@ def aggregate_metrics(confidence_steps, entropy_steps, mask_positions):
     return avg_confidence, avg_entropy
 
 
+
+def compute_confidence_histogram(confidence_steps, mask_positions, threshold=0.9):
+    """
+    For each token, find the first step where confidence exceeds threshold
+
+    
+    Returns:
+        step_counts: dict {step: count}
+    """
+
+    num_steps = len(confidence_steps)
+    batch_size, seq_len = confidence_steps[0].shape
+
+    # initialize tracking
+    first_reach = torch.full((batch_size, seq_len), -1) ##When did each token become confident?
+
+    for step_idx, conf in enumerate(confidence_steps):
+
+        # only masked tokens
+        conf_masked = conf.clone()
+        conf_masked[~mask_positions] = -1
+
+        reached = (conf_masked > threshold) & (first_reach == -1)
+
+        first_reach[reached] = step_idx
+
+    # count occurrences
+    step_counts = {}
+
+    valid_positions = mask_positions.cpu()
+
+    for step in range(num_steps):
+        count = ((first_reach == step) & valid_positions).sum().item()
+        step_counts[step] = count
+
+    return step_counts
+    

@@ -48,3 +48,29 @@ def plot_confident_mistakes(mistakes_per_step, total_tokens_per_step):
     plt.title("Confident Mistakes vs Diffusion Step")
     plt.show()
 
+
+def plot_confidence_histogram(step_counts, total_tokens):
+    """
+    Plot percentage of tokens reaching confidence > 0.9 at each step
+    """
+
+    
+    import matplotlib.pyplot as plt
+
+    steps = list(step_counts.keys())
+
+    # convert to percentage
+    percentages = [
+        (step_counts[s] / total_tokens) * 100 if total_tokens > 0 else 0
+        for s in steps
+    ]
+
+    plt.figure()
+    plt.bar(steps, percentages)
+    plt.xlabel("Step where confidence > 0.9")
+    plt.ylabel("Percentage of Tokens (%)")
+    plt.title("Confidence Histogram (Percentage)")
+    plt.show()
+    
+
+    

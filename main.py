@@ -308,6 +308,21 @@ if __name__ == "__main__":
             rate = m / t if t > 0 else 0
             print(f"Step {i}: {m}/{t} (rate={rate:.4f})")
 
+        from analysis.noise_analysis import compute_confidence_histogram
+        from analysis.visualization import plot_confidence_histogram
+
+        step_counts = compute_confidence_histogram(
+        confidence_steps,
+        mask_positions_cpu
+        )
+
+        print("\nConfidence Histogram:", step_counts)
+
+        total_tokens = mask_positions_cpu.sum().item()
+
+        plot_confidence_histogram(step_counts, total_tokens)
+
+
         original_text = tokenizer.decode( ## Decodes the original target token IDs back into a human-readable string using the tokenizer, skipping any special tokens in the process.
             sample["target_ids"],
             skip_special_tokens=True

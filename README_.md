@@ -29,3 +29,7 @@ However, this confidence is misleading, as ~60% of predictions are incorrect at 
 Critical Insight
 
 “The diffusion model does not know when it is wrong.”
+
+Confidence Histogram Analysis
+
+The confidence histogram shows that approximately 68% of tokens reach a confidence level above 90% within the first diffusion step, while the remaining tokens achieve this threshold at the initial step. Despite this rapid confidence saturation, earlier analysis indicates that a large proportion of these predictions are incorrect at early steps. This demonstrates that confidence is not a reliable indicator of correctness in diffusion-based text generation models.
