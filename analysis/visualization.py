@@ -24,3 +24,27 @@ def plot_metrics(avg_confidence, avg_entropy):
     plt.title("Entropy vs Diffusion Step")
     plt.show()
 
+
+def plot_confident_mistakes(mistakes_per_step, total_tokens_per_step):
+    """
+    Plot confident mistake rate over diffusion steps
+    """
+
+
+    steps = list(range(len(mistakes_per_step)))
+
+    # compute rate
+    rates = []
+    for m, t in zip(mistakes_per_step, total_tokens_per_step):
+        rate = m / t if t > 0 else 0
+        rates.append(rate)
+
+    import matplotlib.pyplot as plt
+
+    plt.figure()
+    plt.plot(steps, rates)
+    plt.xlabel("Diffusion Step")
+    plt.ylabel("Confident Mistake Rate")
+    plt.title("Confident Mistakes vs Diffusion Step")
+    plt.show()
+

@@ -299,6 +299,9 @@ if __name__ == "__main__":
             sample["target_ids"].unsqueeze(0).cpu(), # ground truth
             mask_positions_cpu
         )
+        from analysis.visualization import plot_confident_mistakes
+
+        plot_confident_mistakes(mistakes, total)
 
         print("\nConfident Mistakes per Step:")
         for i, (m, t) in enumerate(zip(mistakes, total)):
