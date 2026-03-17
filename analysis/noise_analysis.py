@@ -212,3 +212,55 @@ def compute_entropy_by_correctness(probs_steps, entropy_steps, ground_truth_ids,
 
     return entropy_correct, entropy_incorrect
 
+
+def prepare_entropy_heatmap(entropy_steps, probs_steps, ground_truth_ids, mask_positions):
+    """
+    Prepare entropy matrices for correct and incorrect tokens
+
+    
+    Returns:
+        entropy_correct_matrix: [num_correct_tokens, num_steps]
+        entropy_incorrect_matrix: [num_incorrect_tokens, num_steps]
+    """
+
+    num_steps = len(entropy_steps)
+
+    # get predictions at final step (step 0)
+    final_preds = torch.argmax(probs_steps[-1], dim=-1)
+
+    # mask positions
+    mask = mask_positions
+
+    gt = ground_truth_ids
+    preds = final_preds
+
+    # identify correct/incorrect tokens (final decision)
+    correct_mask = (preds == gt) & mask
+    incorrect_mask = (preds != gt) & mask
+
+    entropy_correct = []
+    entropy_incorrect = []
+
+    for step_idx in range(num_steps):
+        entropy = entropy_steps[step_idx]
+
+        # select masked tokens
+        entropy_masked = entropy[mask]
+
+        # split
+        entropy_correct.append(entropy[correct_mask])
+        entropy_incorrect.append(entropy[incorrect_mask])
+
+    # stack into matrices [tokens, steps]
+    if len(entropy_correct) > 0:
+        entropy_correct_matrix = torch.stack(entropy_correct, dim=1)
+    else:
+        entropy_correct_matrix = torch.empty(0)
+
+    if len(entropy_incorrect) > 0:
+        entropy_incorrect_matrix = torch.stack(entropy_incorrect, dim=1)
+    else:
+        entropy_incorrect_matrix = torch.empty(0)
+
+    return entropy_correct_matrix.cpu(), entropy_incorrect_matrix.cpu()
+    

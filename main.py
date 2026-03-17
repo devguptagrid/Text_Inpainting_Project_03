@@ -335,6 +335,18 @@ if __name__ == "__main__":
 
         plot_entropy_correct_vs_incorrect(entropy_correct, entropy_incorrect)
 
+        from analysis.noise_analysis import prepare_entropy_heatmap
+        from analysis.visualization import plot_entropy_heatmaps
+
+        entropy_correct_mat, entropy_incorrect_mat = prepare_entropy_heatmap(
+        entropy_steps,
+        probs_steps,
+        sample["target_ids"].unsqueeze(0).cpu(),
+        mask_positions_cpu
+        )
+
+        plot_entropy_heatmaps(entropy_correct_mat, entropy_incorrect_mat)
+
         original_text = tokenizer.decode( ## Decodes the original target token IDs back into a human-readable string using the tokenizer, skipping any special tokens in the process.
             sample["target_ids"],
             skip_special_tokens=True

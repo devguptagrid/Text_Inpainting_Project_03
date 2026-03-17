@@ -94,4 +94,32 @@ def plot_entropy_correct_vs_incorrect(entropy_correct, entropy_incorrect):
     
 
 
+def plot_entropy_heatmaps(entropy_correct, entropy_incorrect):
+    """
+    Plot entropy heatmaps for correct and incorrect tokens
+    """
+
     
+    import matplotlib.pyplot as plt
+
+    # Correct tokens heatmap
+    if entropy_correct.numel() > 0:
+        plt.figure()
+        plt.imshow(entropy_correct, aspect='auto')
+        plt.colorbar()
+        plt.xlabel("Diffusion Step")
+        plt.ylabel("Token Index")
+        plt.title("Entropy Heatmap (Correct Tokens)")
+        plt.show()
+
+    # Incorrect tokens heatmap
+    if entropy_incorrect.numel() > 0:
+        plt.figure()
+        plt.imshow(entropy_incorrect, aspect='auto')
+        plt.colorbar()
+        plt.xlabel("Diffusion Step")
+        plt.ylabel("Token Index")
+        plt.title("Entropy Heatmap (Incorrect Tokens)")
+        plt.show()
+    
+
