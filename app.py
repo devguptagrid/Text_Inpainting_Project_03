@@ -92,7 +92,7 @@ def inpaint(text, temperature, top_k): ## Main function to perform text inpainti
     masked_input = masked_input.unsqueeze(0).to(device)
     mask_positions = mask_positions.unsqueeze(0).to(device)
 
-    generated = reverse_diffusion_sample( ## Run reverse diffusion sampling to generate inpainted token IDs for the masked positions using the trained model, forward diffusion process, tokenizer, input IDs, and mask positions.
+    generated,logits_steps, probs_steps = reverse_diffusion_sample( ## Run reverse diffusion sampling to generate inpainted token IDs for the masked positions using the trained model, forward diffusion process, tokenizer, input IDs, and mask positions.
         model=model,
         diffusion_forward=diffusion_forward,
         tokenizer=tokenizer,

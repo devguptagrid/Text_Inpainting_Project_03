@@ -3,6 +3,8 @@
 import torch
 import torch.nn.functional as F
 
+logits_per_step = [] ##store raw model outputs per step
+probs_per_step = [] ##stored probabilities after softmax
 
 def sample_with_temperature_topk(logits, temperature=1.0, top_k=0):
     logits = logits / temperature ##Temperature controls randomness:
@@ -17,6 +19,8 @@ def sample_with_temperature_topk(logits, temperature=1.0, top_k=0):
         return torch.multinomial(probs, 1)
 
 
+
+
 def reverse_diffusion_sample(
     model,
     diffusion_forward,
@@ -29,6 +33,9 @@ def reverse_diffusion_sample(
     device="cpu"
 ):
     model.eval() ## Set the model to evaluation mode, which disables dropout and other training-specific behaviors, ensuring deterministic outputs during sampling.
+
+    logits_per_step = [] ##store raw model outputs per step
+    probs_per_step = [] ##stored probabilities after softmax
 
     x_t = input_ids.clone().to(device) ## Create a copy of the input_ids tensor and move it to the specified device (CPU or GPU) for processing.
 
@@ -54,6 +61,11 @@ def reverse_diffusion_sample(
                 attention_mask
             )
 
+            probs = F.softmax(logits, dim=-1) ##Convert logits to probabilities
+            ##Store full sequence logits and probabilities
+            logits_per_step.append(logits.detach().cpu())
+            probs_per_step.append(probs.detach().cpu())
+
             logits_masked = logits[mask_positions] ## Extract the logits corresponding to the masked positions, which are the positions that need to be denoised and generated.
 
             next_tokens = sample_with_temperature_topk( ## Sample the next tokens for the masked positions which applies temperature scaling and top-k filtering to the logits.
@@ -64,4 +76,4 @@ def reverse_diffusion_sample(
 
             x_t[mask_positions] = next_tokens ## Update the noisy input x_t at the masked positions with the newly sampled tokens, progressively denoising the input as we iterate through the timesteps in reverse order.
 
-    return x_t
+    return x_t, logits_per_step, probs_per_step

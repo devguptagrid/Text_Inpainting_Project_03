@@ -270,7 +270,7 @@ if __name__ == "__main__":
 
         from inference.reverse_diffusion import reverse_diffusion_sample
 
-        generated = reverse_diffusion_sample( ## Runs the reverse diffusion sampling process using the trained model, forward diffusion process, tokenizer, input IDs, and mask positions to generate the inpainted token IDs for the masked positions.
+        generated,logits_steps, probs_steps = reverse_diffusion_sample( ## Runs the reverse diffusion sampling process using the trained model, forward diffusion process, tokenizer, input IDs, and mask positions to generate the inpainted token IDs for the masked positions.
             model,
             diffusion_forward,
             tokenizer,
