@@ -22,7 +22,7 @@ from evaluation.bleu import compute_masked_bleu
 from evaluation.rouge import compute_masked_rouge_l
 from inference.reverse_diffusion import reverse_diffusion_sample
 
-mode = "test"   # "baseline" or "diffusion" or "inference" or "test"
+mode = "inference"   # "baseline" or "diffusion" or "inference" or "test"
 
 if __name__ == "__main__":
     set_seed(42) ## Set random seed for reproducibility across runs, ensuring that the same sequence of random numbers is generated each time the code is executed, 
@@ -282,6 +282,29 @@ if __name__ == "__main__":
             device=device
         )
 
+        from analysis.noise_analysis import compute_confidence, compute_entropy, aggregate_metrics, compute_confident_mistakes
+        from analysis.visualization import plot_metrics
+
+        confidence_steps = compute_confidence(probs_steps)
+        entropy_steps = compute_entropy(probs_steps)
+        mask_positions_cpu = mask_positions.cpu()
+
+        avg_conf, avg_ent = aggregate_metrics(confidence_steps, entropy_steps, mask_positions_cpu)
+
+        plot_metrics(avg_conf, avg_ent)
+
+        mistakes, total = compute_confident_mistakes(
+            probs_steps,
+            confidence_steps,
+            sample["target_ids"].unsqueeze(0).cpu(), # ground truth
+            mask_positions_cpu
+        )
+
+        print("\nConfident Mistakes per Step:")
+        for i, (m, t) in enumerate(zip(mistakes, total)):
+            rate = m / t if t > 0 else 0
+            print(f"Step {i}: {m}/{t} (rate={rate:.4f})")
+
         original_text = tokenizer.decode( ## Decodes the original target token IDs back into a human-readable string using the tokenizer, skipping any special tokens in the process.
             sample["target_ids"],
             skip_special_tokens=True
@@ -425,3 +448,6 @@ if __name__ == "__main__":
 
     print(f"Masked BLEU Score: {avg_bleu:.4f}")
     print(f"Masked ROUGE-L Score: {avg_rouge:.4f}")
+
+
+
