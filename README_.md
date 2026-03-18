@@ -84,3 +84,14 @@ So: small changes don’t affect it much
 
 3.  simple_word_reward_and_penalty.png
 We implement span-level steering by assigning different constraints to each masked span. For spans requiring simpler language, we apply both a reward to short tokens and a penalty to longer tokens during sampling by modifying logits. This enables fine-grained control over generated content.
+
+
+6. 
+| Setting  | Train Acc | Val Acc |
+| -------- | --------- | ------- | without dropout
+| Span 10% | 49.84     | 50.82   |
+
+
+| Setting  | Train Acc | Val Acc |
+| -------- | --------- | ------- | with dropout
+| Span 10% | 49.80     | 50.97   |
