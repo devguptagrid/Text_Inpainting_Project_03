@@ -259,7 +259,7 @@ if __name__ == "__main__":
             sequences=val_sequences,
             tokenizer=tokenizer,
             mask_type="span",
-            mask_ratio=0.10,
+            mask_ratio=0.20,
             dynamic_masking=False,
         )
 
@@ -282,86 +282,86 @@ if __name__ == "__main__":
             top_k=20,
             device=device,
             guidance_fn=simple_guidance, # NEW
-            guidance_strength=2.0 # try 1.0–2.0
+            guidance_strength=1.5 # try 1.0–2.0
         )
 
-        from analysis.noise_analysis import compute_confidence, compute_entropy, aggregate_metrics, compute_confident_mistakes
-        from analysis.visualization import plot_metrics
+        # from analysis.noise_analysis import compute_confidence, compute_entropy, aggregate_metrics, compute_confident_mistakes
+        # from analysis.visualization import plot_metrics
 
-        confidence_steps = compute_confidence(probs_steps)
-        entropy_steps = compute_entropy(probs_steps)
-        mask_positions_cpu = mask_positions.cpu()
+        # confidence_steps = compute_confidence(probs_steps)
+        # entropy_steps = compute_entropy(probs_steps)
+        # mask_positions_cpu = mask_positions.cpu()
 
-        avg_conf, avg_ent = aggregate_metrics(confidence_steps, entropy_steps, mask_positions_cpu)
+        # avg_conf, avg_ent = aggregate_metrics(confidence_steps, entropy_steps, mask_positions_cpu)
 
-        plot_metrics(avg_conf, avg_ent)
+        # plot_metrics(avg_conf, avg_ent)
 
-        mistakes, total = compute_confident_mistakes(
-            probs_steps,
-            confidence_steps,
-            sample["target_ids"].unsqueeze(0).cpu(), # ground truth
-            mask_positions_cpu
-        )
-        from analysis.visualization import plot_confident_mistakes
+        # mistakes, total = compute_confident_mistakes(
+        #     probs_steps,
+        #     confidence_steps,
+        #     sample["target_ids"].unsqueeze(0).cpu(), # ground truth
+        #     mask_positions_cpu
+        # )
+        # from analysis.visualization import plot_confident_mistakes
 
-        plot_confident_mistakes(mistakes, total)
+        # plot_confident_mistakes(mistakes, total)
 
-        print("\nConfident Mistakes per Step:")
-        for i, (m, t) in enumerate(zip(mistakes, total)):
-            rate = m / t if t > 0 else 0
-            print(f"Step {i}: {m}/{t} (rate={rate:.4f})")
+        # print("\nConfident Mistakes per Step:")
+        # for i, (m, t) in enumerate(zip(mistakes, total)):
+        #     rate = m / t if t > 0 else 0
+        #     print(f"Step {i}: {m}/{t} (rate={rate:.4f})")
 
-        from analysis.noise_analysis import compute_confidence_histogram
-        from analysis.visualization import plot_confidence_histogram
+        # from analysis.noise_analysis import compute_confidence_histogram
+        # from analysis.visualization import plot_confidence_histogram
 
-        step_counts = compute_confidence_histogram(
-        confidence_steps,
-        mask_positions_cpu
-        )
+        # step_counts = compute_confidence_histogram(
+        # confidence_steps,
+        # mask_positions_cpu
+        # )
 
-        print("\nConfidence Histogram:", step_counts)
+        # print("\nConfidence Histogram:", step_counts)
 
-        total_tokens = mask_positions_cpu.sum().item()
+        # total_tokens = mask_positions_cpu.sum().item()
 
-        plot_confidence_histogram(step_counts, total_tokens)
+        # plot_confidence_histogram(step_counts, total_tokens)
 
 
-        from analysis.noise_analysis import compute_entropy_by_correctness
-        from analysis.visualization import plot_entropy_correct_vs_incorrect
+        # from analysis.noise_analysis import compute_entropy_by_correctness
+        # from analysis.visualization import plot_entropy_correct_vs_incorrect
 
-        entropy_correct, entropy_incorrect = compute_entropy_by_correctness(
-        probs_steps,
-        entropy_steps,
-        sample["target_ids"].unsqueeze(0).cpu(),
-        mask_positions_cpu
-        )
+        # entropy_correct, entropy_incorrect = compute_entropy_by_correctness(
+        # probs_steps,
+        # entropy_steps,
+        # sample["target_ids"].unsqueeze(0).cpu(),
+        # mask_positions_cpu
+        # )
 
-        plot_entropy_correct_vs_incorrect(entropy_correct, entropy_incorrect)
+        # plot_entropy_correct_vs_incorrect(entropy_correct, entropy_incorrect)
 
-        from analysis.noise_analysis import prepare_entropy_heatmap
-        from analysis.visualization import plot_entropy_heatmaps
+        # from analysis.noise_analysis import prepare_entropy_heatmap
+        # from analysis.visualization import plot_entropy_heatmaps
 
-        entropy_correct_mat, entropy_incorrect_mat = prepare_entropy_heatmap(
-        entropy_steps,
-        probs_steps,
-        sample["target_ids"].unsqueeze(0).cpu(),
-        mask_positions_cpu
-        )
+        # entropy_correct_mat, entropy_incorrect_mat = prepare_entropy_heatmap(
+        # entropy_steps,
+        # probs_steps,
+        # sample["target_ids"].unsqueeze(0).cpu(),
+        # mask_positions_cpu
+        # )
 
-        plot_entropy_heatmaps(entropy_correct_mat, entropy_incorrect_mat)
+        # plot_entropy_heatmaps(entropy_correct_mat, entropy_incorrect_mat)
 
-        from analysis.noise_analysis import compute_accuracy_per_step
-        from analysis.visualization import plot_accuracy_vs_step
+        # from analysis.noise_analysis import compute_accuracy_per_step
+        # from analysis.visualization import plot_accuracy_vs_step
 
-        accuracy_per_step = compute_accuracy_per_step(
-        probs_steps,
-        sample["target_ids"].unsqueeze(0).cpu(),
-        mask_positions_cpu
-        )
+        # accuracy_per_step = compute_accuracy_per_step(
+        # probs_steps,
+        # sample["target_ids"].unsqueeze(0).cpu(),
+        # mask_positions_cpu
+        # )
 
-        print("\nAccuracy per step:", accuracy_per_step)
+        # print("\nAccuracy per step:", accuracy_per_step)
 
-        plot_accuracy_vs_step(accuracy_per_step)
+        # plot_accuracy_vs_step(accuracy_per_step)
 
         original_text = tokenizer.decode( ## Decodes the original target token IDs back into a human-readable string using the tokenizer, skipping any special tokens in the process.
             sample["target_ids"],
