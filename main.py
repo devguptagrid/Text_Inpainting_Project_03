@@ -268,6 +268,9 @@ if __name__ == "__main__":
         input_ids = sample["input_ids"].unsqueeze(0).to(device)
         mask_positions = sample["mask_positions"].unsqueeze(0).to(device)
 
+        mask_weights = torch.ones_like(input_ids, dtype=torch.float).to(device)
+        mask_weights[mask_positions] = 1.0
+        mask_weights[~mask_positions] = 0.2
         from inference.reverse_diffusion import reverse_diffusion_sample
         from inference.guidance import simple_guidance
 
@@ -282,7 +285,8 @@ if __name__ == "__main__":
             top_k=20,
             device=device,
             guidance_fn=simple_guidance, # NEW
-            guidance_strength=1.5 # try 1.0–2.0
+            guidance_strength=0.5, # try 1.0–2.0
+            mask_weights=mask_weights
         )
 
         # from analysis.noise_analysis import compute_confidence, compute_entropy, aggregate_metrics, compute_confident_mistakes

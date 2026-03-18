@@ -34,7 +34,8 @@ def reverse_diffusion_sample(
     top_k=0,
     device="cpu",
     guidance_fn=None, # NEW
-    guidance_strength=1.0 # NEW
+    guidance_strength=1.0, # NEW
+    mask_weights=None
 ):
     model.eval() ## Set the model to evaluation mode, which disables dropout and other training-specific behaviors, ensuring deterministic outputs during sampling.
 
@@ -64,6 +65,8 @@ def reverse_diffusion_sample(
                 mask_positions,
                 attention_mask
             )
+            if mask_weights is not None:
+                logits = logits * mask_weights.unsqueeze(-1)
 
             probs = F.softmax(logits, dim=-1) ##Convert logits to probabilities
             ##Store full sequence logits and probabilities
