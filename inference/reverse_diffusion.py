@@ -2,6 +2,8 @@
 
 import torch
 import torch.nn.functional as F
+from inference.guidance import simple_guidance
+
 
 logits_per_step = [] ##store raw model outputs per step
 probs_per_step = [] ##stored probabilities after softmax
@@ -30,7 +32,9 @@ def reverse_diffusion_sample(
     T,
     temperature=1.0,
     top_k=0,
-    device="cpu"
+    device="cpu",
+    guidance_fn=None, # NEW
+    guidance_strength=1.0 # NEW
 ):
     model.eval() ## Set the model to evaluation mode, which disables dropout and other training-specific behaviors, ensuring deterministic outputs during sampling.
 
@@ -68,6 +72,12 @@ def reverse_diffusion_sample(
 
             logits_masked = logits[mask_positions] ## Extract the logits corresponding to the masked positions, which are the positions that need to be denoised and generated.
 
+            if guidance_fn is not None:
+                logits_masked = guidance_fn(
+                    logits_masked,
+                    tokenizer,
+                    strength=guidance_strength
+                )
             next_tokens = sample_with_temperature_topk( ## Sample the next tokens for the masked positions which applies temperature scaling and top-k filtering to the logits.
                 logits_masked,
                 temperature=temperature,

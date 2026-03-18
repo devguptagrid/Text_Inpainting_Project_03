@@ -269,6 +269,7 @@ if __name__ == "__main__":
         mask_positions = sample["mask_positions"].unsqueeze(0).to(device)
 
         from inference.reverse_diffusion import reverse_diffusion_sample
+        from inference.guidance import simple_guidance
 
         generated,logits_steps, probs_steps = reverse_diffusion_sample( ## Runs the reverse diffusion sampling process using the trained model, forward diffusion process, tokenizer, input IDs, and mask positions to generate the inpainted token IDs for the masked positions.
             model,
@@ -279,7 +280,9 @@ if __name__ == "__main__":
             T=T,
             temperature=0.8,
             top_k=20,
-            device=device
+            device=device,
+            guidance_fn=simple_guidance, # NEW
+            guidance_strength=2.0 # try 1.0–2.0
         )
 
         from analysis.noise_analysis import compute_confidence, compute_entropy, aggregate_metrics, compute_confident_mistakes
@@ -443,66 +446,66 @@ if __name__ == "__main__":
         print(f"Test Accuracy: {test_acc:.4f}")
 
         # =========================
-    # BLEU Evaluation
-    # =========================
+        # BLEU Evaluation
+        # =========================
 
-    print("\nComputing BLEU Score...\n")
+        print("\nComputing BLEU Score...\n")
 
-    model.eval() ## Set the model to evaluation mode, which disables dropout and other training-specific behaviors, ensuring deterministic outputs during evaluation.
+        model.eval() ## Set the model to evaluation mode, which disables dropout and other training-specific behaviors, ensuring deterministic outputs during evaluation.
 
-    total_bleu = 0
-    total_rouge = 0
-    num_samples = 0
+        total_bleu = 0
+        total_rouge = 0
+        num_samples = 0
 
-    for batch_idx, batch in enumerate(test_loader):
+        for batch_idx, batch in enumerate(test_loader):
 
-        if batch_idx > 30:   # limit for speed
-            break
+            if batch_idx > 30:   # limit for speed
+                break
 
-        ## Prepare input IDs and mask positions for the batch, moving them to the appropriate device for evaluation.
-        input_ids = batch["input_ids"].to(device)
-        target_ids = batch["target_ids"].to(device)
-        mask_positions = batch["mask_positions"].to(device)
+            ## Prepare input IDs and mask positions for the batch, moving them to the appropriate device for evaluation.
+            input_ids = batch["input_ids"].to(device)
+            target_ids = batch["target_ids"].to(device)
+            mask_positions = batch["mask_positions"].to(device)
 
-        ## Run reverse diffusion sampling to generate inpainted token IDs for the masked positions using the trained model, forward diffusion process, tokenizer, input IDs, and mask positions.
-        generated = reverse_diffusion_sample(
-            model=model,
-            diffusion_forward=diffusion_forward,
-            tokenizer=tokenizer,
-            input_ids=input_ids,
-            mask_positions=mask_positions,
-            T=T,
-            temperature=0.7,
-            top_k=0,
-            device=device
-        )
-
-        for i in range(input_ids.size(0)):
-
-            ## Compute masked BLEU and ROUGE scores for each sample in the batch by comparing the target token IDs, generated token IDs, and mask positions, and accumulate the scores to compute the average at the end.
-            bleu = compute_masked_bleu(
-                target_ids[i].cpu(),
-                generated[i].cpu(),
-                mask_positions[i].cpu(),
-                tokenizer
+            ## Run reverse diffusion sampling to generate inpainted token IDs for the masked positions using the trained model, forward diffusion process, tokenizer, input IDs, and mask positions.
+            generated = reverse_diffusion_sample(
+                model=model,
+                diffusion_forward=diffusion_forward,
+                tokenizer=tokenizer,
+                input_ids=input_ids,
+                mask_positions=mask_positions,
+                T=T,
+                temperature=0.7,
+                top_k=0,
+                device=device
             )
 
-            rouge = compute_masked_rouge_l(
-                target_ids[i].cpu(),
-                generated[i].cpu(),
-                mask_positions[i].cpu(),
-                tokenizer
-            )
+            for i in range(input_ids.size(0)):
 
-            total_bleu += bleu
-            total_rouge += rouge
-            num_samples += 1
+                ## Compute masked BLEU and ROUGE scores for each sample in the batch by comparing the target token IDs, generated token IDs, and mask positions, and accumulate the scores to compute the average at the end.
+                bleu = compute_masked_bleu(
+                    target_ids[i].cpu(),
+                    generated[i].cpu(),
+                    mask_positions[i].cpu(),
+                    tokenizer
+                )
 
-    avg_bleu = total_bleu / num_samples
-    avg_rouge = total_rouge / num_samples
+                rouge = compute_masked_rouge_l(
+                    target_ids[i].cpu(),
+                    generated[i].cpu(),
+                    mask_positions[i].cpu(),
+                    tokenizer
+                )
 
-    print(f"Masked BLEU Score: {avg_bleu:.4f}")
-    print(f"Masked ROUGE-L Score: {avg_rouge:.4f}")
+                total_bleu += bleu
+                total_rouge += rouge
+                num_samples += 1
+
+        avg_bleu = total_bleu / num_samples
+        avg_rouge = total_rouge / num_samples
+
+        print(f"Masked BLEU Score: {avg_bleu:.4f}")
+        print(f"Masked ROUGE-L Score: {avg_rouge:.4f}")
 
 
 
