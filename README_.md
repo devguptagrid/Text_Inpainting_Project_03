@@ -1,3 +1,5 @@
+## task 2
+
 Observation:
 
 confidence_vs_step.png - Confidence rapidly increases from ~0.6 to ~0.99 within the first diffusion step.
