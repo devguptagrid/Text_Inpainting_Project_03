@@ -22,9 +22,9 @@ from data.diffusion_dataset import DiffusionDataset
 from evaluation.bleu import compute_masked_bleu
 from evaluation.rouge import compute_masked_rouge_l
 from inference.reverse_diffusion import reverse_diffusion_sample
-from inference.guidance import simple_guidance
+from inference.guidance import simple_guidance,span_guidance_with_penalty
 
-mode = "test"   # "baseline" or "diffusion" or "inference" or "test"
+mode = "inference"   # "baseline" or "diffusion" or "inference" or "test"
 
 if __name__ == "__main__":
     set_seed(42) ## Set random seed for reproducibility across runs, ensuring that the same sequence of random numbers is generated each time the code is executed, 
@@ -274,7 +274,10 @@ if __name__ == "__main__":
         mask_weights[mask_positions] = 1.0
         mask_weights[~mask_positions] = 0.2
         from inference.reverse_diffusion import reverse_diffusion_sample
-        
+        from analysis.span_id import get_span_ids
+
+        span_ids = get_span_ids(mask_positions)
+
 
         generated,logits_steps, probs_steps = reverse_diffusion_sample( ## Runs the reverse diffusion sampling process using the trained model, forward diffusion process, tokenizer, input IDs, and mask positions to generate the inpainted token IDs for the masked positions.
             model,
@@ -286,8 +289,13 @@ if __name__ == "__main__":
             temperature=0.8,
             top_k=20,
             device=device,
-            guidance_fn=simple_guidance, # NEW
-            guidance_strength=0.5, # try 1.0–2.0
+            guidance_fn=lambda logits, tokenizer, strength: span_guidance_with_penalty(
+            logits,
+            tokenizer,
+            span_ids=span_ids[mask_positions],
+            strength=strength
+            ),
+            guidance_strength=0.5,
             mask_weights=mask_weights
         )
 

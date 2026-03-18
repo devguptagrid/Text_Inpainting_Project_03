@@ -80,3 +80,7 @@ BLEU: 0.0804
 As guidance strength increases, the proportion of short tokens(constraint satisfaction) increases significantly, demonstrating effective control over generation.
 BLEU is low overall (~0.08)
 So: small changes don’t affect it much
+
+
+3.  simple_word_reward_and_penalty.png
+We implement span-level steering by assigning different constraints to each masked span. For spans requiring simpler language, we apply both a reward to short tokens and a penalty to longer tokens during sampling by modifying logits. This enables fine-grained control over generated content.
