@@ -2,6 +2,7 @@
 # initializes the model and optimizer, and runs the training loop. It also includes code for evaluating the model on the test set and 
 # computing BLEU/ROUGE scores.
 
+from analysis.short_token import compute_short_token_percentage
 from utils.seed import set_seed
 from utils.device import get_device
 from data.load_data import load_wikitext, clean_dataset
@@ -21,8 +22,9 @@ from data.diffusion_dataset import DiffusionDataset
 from evaluation.bleu import compute_masked_bleu
 from evaluation.rouge import compute_masked_rouge_l
 from inference.reverse_diffusion import reverse_diffusion_sample
+from inference.guidance import simple_guidance
 
-mode = "inference"   # "baseline" or "diffusion" or "inference" or "test"
+mode = "test"   # "baseline" or "diffusion" or "inference" or "test"
 
 if __name__ == "__main__":
     set_seed(42) ## Set random seed for reproducibility across runs, ensuring that the same sequence of random numbers is generated each time the code is executed, 
@@ -272,7 +274,7 @@ if __name__ == "__main__":
         mask_weights[mask_positions] = 1.0
         mask_weights[~mask_positions] = 0.2
         from inference.reverse_diffusion import reverse_diffusion_sample
-        from inference.guidance import simple_guidance
+        
 
         generated,logits_steps, probs_steps = reverse_diffusion_sample( ## Runs the reverse diffusion sampling process using the trained model, forward diffusion process, tokenizer, input IDs, and mask positions to generate the inpainted token IDs for the masked positions.
             model,
@@ -457,59 +459,71 @@ if __name__ == "__main__":
 
         model.eval() ## Set the model to evaluation mode, which disables dropout and other training-specific behaviors, ensuring deterministic outputs during evaluation.
 
-        total_bleu = 0
-        total_rouge = 0
-        num_samples = 0
+        guidance_strengths = [0.5, 1.0, 1.5, 2.0]
 
-        for batch_idx, batch in enumerate(test_loader):
+        for strength in guidance_strengths:
+    
+            print(f"\n--- Guidance Strength: {strength} ---")
 
-            if batch_idx > 30:   # limit for speed
-                break
+            total_bleu = 0
+            total_short = 0
+            num_samples = 0
 
-            ## Prepare input IDs and mask positions for the batch, moving them to the appropriate device for evaluation.
-            input_ids = batch["input_ids"].to(device)
-            target_ids = batch["target_ids"].to(device)
-            mask_positions = batch["mask_positions"].to(device)
+            for batch_idx, batch in enumerate(test_loader):
 
-            ## Run reverse diffusion sampling to generate inpainted token IDs for the masked positions using the trained model, forward diffusion process, tokenizer, input IDs, and mask positions.
-            generated = reverse_diffusion_sample(
-                model=model,
-                diffusion_forward=diffusion_forward,
-                tokenizer=tokenizer,
-                input_ids=input_ids,
-                mask_positions=mask_positions,
-                T=T,
-                temperature=0.7,
-                top_k=0,
-                device=device
-            )
+                if batch_idx > 30:
+                    break
 
-            for i in range(input_ids.size(0)):
+                input_ids = batch["input_ids"].to(device)
+                target_ids = batch["target_ids"].to(device)
+                mask_positions = batch["mask_positions"].to(device)
 
-                ## Compute masked BLEU and ROUGE scores for each sample in the batch by comparing the target token IDs, generated token IDs, and mask positions, and accumulate the scores to compute the average at the end.
-                bleu = compute_masked_bleu(
-                    target_ids[i].cpu(),
-                    generated[i].cpu(),
-                    mask_positions[i].cpu(),
-                    tokenizer
+                # create mask weights
+                mask_weights = torch.ones_like(input_ids, dtype=torch.float).to(device)
+                mask_weights[mask_positions] = 1.0
+                mask_weights[~mask_positions] = 0.2
+
+                generated, _, _ = reverse_diffusion_sample(
+                    model=model,
+                    diffusion_forward=diffusion_forward,
+                    tokenizer=tokenizer,
+                    input_ids=input_ids,
+                    mask_positions=mask_positions,
+                    T=T,
+                    temperature=0.7,
+                    top_k=0,
+                    device=device,
+                    guidance_fn=simple_guidance,
+                    guidance_strength=strength,
+                    mask_weights=mask_weights
                 )
 
-                rouge = compute_masked_rouge_l(
-                    target_ids[i].cpu(),
-                    generated[i].cpu(),
-                    mask_positions[i].cpu(),
-                    tokenizer
-                )
+                for i in range(input_ids.size(0)):
 
-                total_bleu += bleu
-                total_rouge += rouge
-                num_samples += 1
+                    bleu = compute_masked_bleu(
+                        target_ids[i].cpu(),
+                        generated[i].cpu(),
+                        mask_positions[i].cpu(),
+                        tokenizer
+                    )
 
-        avg_bleu = total_bleu / num_samples
-        avg_rouge = total_rouge / num_samples
+                    short_pct = compute_short_token_percentage(
+                        generated[i].cpu(),
+                        mask_positions[i].cpu(),
+                        tokenizer
+                    )
 
-        print(f"Masked BLEU Score: {avg_bleu:.4f}")
-        print(f"Masked ROUGE-L Score: {avg_rouge:.4f}")
+                    total_bleu += bleu
+                    total_short += short_pct
+                    num_samples += 1
+
+            avg_bleu = total_bleu / num_samples
+            avg_short = total_short / num_samples
+
+            print(f"BLEU: {avg_bleu:.4f}")
+            print(f"% Short Tokens: {avg_short:.4f}")
+            
+
 
 
 
