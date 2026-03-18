@@ -264,3 +264,32 @@ def prepare_entropy_heatmap(entropy_steps, probs_steps, ground_truth_ids, mask_p
 
     return entropy_correct_matrix.cpu(), entropy_incorrect_matrix.cpu()
     
+
+
+def compute_accuracy_per_step(probs_steps, ground_truth_ids, mask_positions):
+    """
+    Compute accuracy at each diffusion step
+
+    
+    Returns:
+        accuracy_per_step: list of floats
+    """
+
+    accuracy_per_step = []
+
+    for probs in probs_steps:
+
+        pred_tokens = torch.argmax(probs, dim=-1)
+
+        # masked tokens only
+        pred_masked = pred_tokens[mask_positions]
+        gt_masked = ground_truth_ids[mask_positions]
+
+        correct = (pred_masked == gt_masked).sum().item()
+        total = gt_masked.numel()
+
+        acc = correct / total if total > 0 else 0
+        accuracy_per_step.append(acc)
+
+    return accuracy_per_step
+    

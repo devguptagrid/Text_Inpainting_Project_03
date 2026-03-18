@@ -123,3 +123,21 @@ def plot_entropy_heatmaps(entropy_correct, entropy_incorrect):
         plt.show()
     
 
+
+def plot_accuracy_vs_step(accuracy_per_step):
+    """
+    Plot accuracy vs diffusion step
+    """
+
+    
+    import matplotlib.pyplot as plt
+
+    steps = list(range(len(accuracy_per_step)))
+
+    plt.figure()
+    plt.plot(steps, accuracy_per_step)
+    plt.xlabel("Diffusion Step")
+    plt.ylabel("Accuracy")
+    plt.title("Accuracy vs Diffusion Step")
+    plt.show()
+    

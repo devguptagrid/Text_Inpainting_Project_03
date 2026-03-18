@@ -347,6 +347,19 @@ if __name__ == "__main__":
 
         plot_entropy_heatmaps(entropy_correct_mat, entropy_incorrect_mat)
 
+        from analysis.noise_analysis import compute_accuracy_per_step
+        from analysis.visualization import plot_accuracy_vs_step
+
+        accuracy_per_step = compute_accuracy_per_step(
+        probs_steps,
+        sample["target_ids"].unsqueeze(0).cpu(),
+        mask_positions_cpu
+        )
+
+        print("\nAccuracy per step:", accuracy_per_step)
+
+        plot_accuracy_vs_step(accuracy_per_step)
+
         original_text = tokenizer.decode( ## Decodes the original target token IDs back into a human-readable string using the tokenizer, skipping any special tokens in the process.
             sample["target_ids"],
             skip_special_tokens=True
