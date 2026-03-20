@@ -61,3 +61,46 @@ def print_top_stationary_tokens(stationary, tokenizer, top_k=10):
         token = tokenizer.convert_ids_to_tokens(i.item())
         print(f"{token}: {v.item():.4f}")
     
+
+
+from collections import Counter
+import torch
+
+def compute_unigram_distribution(dataset, tokenizer, vocab_size):
+    """
+    Compute unigram frequency distribution over dataset
+    """
+    counter = Counter()
+
+    for sample in dataset:
+        input_ids = sample["target_ids"]  # or input_ids
+        for token_id in input_ids:
+            counter[token_id.item()] += 1
+
+    # convert to tensor
+    unigram = torch.zeros(vocab_size)
+
+    total = sum(counter.values())
+
+    for token_id, count in counter.items():
+        unigram[token_id] = count / total
+
+    return unigram
+
+
+def compare_stationary_unigram(stationary, unigram, tokenizer, top_k=10):
+    """
+    Compare top tokens from both distributions
+    """
+
+    stat_vals, stat_idx = stationary.topk(top_k)
+    uni_vals, uni_idx = unigram.topk(top_k)
+
+    print("\nTop Stationary Tokens:")
+    for v, i in zip(stat_vals, stat_idx):
+        print(f"{tokenizer.convert_ids_to_tokens(i.item())}: {v.item():.4f}")
+
+    print("\nTop Unigram Tokens:")
+    for v, i in zip(uni_vals, uni_idx):
+        print(f"{tokenizer.convert_ids_to_tokens(i.item())}: {v.item():.4f}")
+    

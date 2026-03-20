@@ -217,3 +217,40 @@ noisy tokens:
 = , ##us, .
 
 The transition graphs show that at early diffusion steps (t=0), the model produces a flat and uncertain distribution over many tokens, including punctuation and subword fragments, indicating high noise. As the process progresses to later steps (t=11), the distribution becomes more concentrated, with higher probabilities assigned to a few meaningful tokens such as “the” and “is.”
+
+3. 
+Top Stationary Tokens:
+the: 0.1175
+##us: 0.0784
+is: 0.0783
+,: 0.0588
+a: 0.0392
+lobster: 0.0392
+length: 0.0392
+##rus: 0.0392
+or: 0.0390
+crab: 0.0197
+
+Top Unigram Tokens:
+the: 0.0605
+,: 0.0430
+.: 0.0368
+of: 0.0243
+and: 0.0220
+@: 0.0207
+in: 0.0197
+to: 0.0171
+a: 0.0152
+=: 0.0119
+
+Cosine Similarity: 0.5594
+
+model balances:
+- frequency bias
+- contextual understanding
+
+not purely frequency-based  
+not purely context-based  
+→ hybrid behavior
+
+The stationary distribution shows partial alignment with the unigram token frequency distribution, with common tokens such as “the” and “a” appearing in both. However, the stationary distribution also includes context-specific tokens such as “lobster” and “crab,” which are absent from the unigram distribution. The cosine similarity of 0.56 indicates moderate correlation, suggesting that the diffusion model is influenced by token frequency but is not solely driven by it.

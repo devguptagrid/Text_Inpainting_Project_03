@@ -13,6 +13,7 @@ from training.trainer import train_one_epoch, evaluate
 
 from torch.utils.data import DataLoader
 import torch
+import torch.nn.functional as F
 
 from models.diffusion_model import DiffusionBert
 from diffusion.forward_process import DiscreteDiffusionForward
@@ -377,7 +378,7 @@ if __name__ == "__main__":
 
         # plot_accuracy_vs_step(accuracy_per_step)
 
-        from analysis.transition_analysis import extract_top_transitions, decode_tokens, compute_stationary_distribution, print_top_stationary_tokens
+        from analysis.transition_analysis import extract_top_transitions, decode_tokens
 
         transitions = extract_top_transitions(probs_steps, mask_positions)
 
@@ -389,10 +390,20 @@ if __name__ == "__main__":
             for tok, p in zip(tokens, probs):
                 print(f"{tok}: {p:.4f}")
 
+        from analysis.transition_analysis import compute_stationary_distribution, print_top_stationary_tokens
+
         stationary = compute_stationary_distribution(probs_steps, mask_positions)
         print_top_stationary_tokens(stationary, tokenizer)
 
 
+        from analysis.transition_analysis import compute_unigram_distribution, compare_stationary_unigram
+        vocab_size = tokenizer.vocab_size
+        unigram = compute_unigram_distribution(val_data, tokenizer, vocab_size)
+        compare_stationary_unigram(stationary, unigram, tokenizer)
+        similarity = F.cosine_similarity(stationary, unigram, dim=0)
+        print(f"\nCosine Similarity: {similarity.item():.4f}")
+
+        
         from analysis.graph_visualization import plot_transition_graph
 
         # choose a timestep (e.g., last step)
