@@ -24,7 +24,7 @@ from evaluation.rouge import compute_masked_rouge_l
 from inference.reverse_diffusion import reverse_diffusion_sample
 from inference.guidance import simple_guidance,span_guidance_with_penalty
 
-mode = "test"   # "baseline" or "diffusion" or "inference" or "test"
+mode = "inference"   # "baseline" or "diffusion" or "inference" or "test"
 
 if __name__ == "__main__":
     set_seed(42) ## Set random seed for reproducibility across runs, ensuring that the same sequence of random numbers is generated each time the code is executed, 
@@ -388,6 +388,17 @@ if __name__ == "__main__":
             print(f"\nStep {step['timestep']}:")
             for tok, p in zip(tokens, probs):
                 print(f"{tok}: {p:.4f}")
+
+        from analysis.graph_visualization import plot_transition_graph
+
+        # choose a timestep (e.g., last step)
+
+        step = transitions[0]
+
+        tokens = decode_tokens(step["tokens"], tokenizer)
+        probs = step["probs"]
+
+        plot_transition_graph(tokens, probs, title=f"Step {step['timestep']} Transition")
 
         original_text = tokenizer.decode( ## Decodes the original target token IDs back into a human-readable string using the tokenizer, skipping any special tokens in the process.
             sample["target_ids"],

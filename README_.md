@@ -190,3 +190,30 @@ the → she: 3
 the → a: 3
 
 The confusion matrix reveals that the diffusion model frequently substitutes high-frequency tokens such as punctuation (e.g., “the → ,”, “and → ,”) and common function words (e.g., “the → a”, “is → the”), indicating a bias toward simpler and more probable tokens under uncertainty. At the same time, the model demonstrates partial semantic understanding, as seen in substitutions like “american → japanese,” suggesting it captures broad semantic categories.
+
+2. graph for T=0 and T=11.png
+
+T = 11 (late)
+Strong edges:
+the → 0.12
+is → 0.08
+Few dominant tokens
+👉 peaked distribution
+
+🔴 T = 0 (early)
+All edges ~0.02–0.06
+No clear winner
+👉 flat distribution
+
+late step → confident  
+early step → 
+
+🟢 T = 11
+meaningful tokens:
+the, is, lobster, a
+
+🔴 T = 0
+noisy tokens:
+= , ##us, .
+
+The transition graphs show that at early diffusion steps (t=0), the model produces a flat and uncertain distribution over many tokens, including punctuation and subword fragments, indicating high noise. As the process progresses to later steps (t=11), the distribution becomes more concentrated, with higher probabilities assigned to a few meaningful tokens such as “the” and “is.”
