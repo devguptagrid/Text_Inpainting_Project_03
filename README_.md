@@ -174,3 +174,19 @@ or: 0.0390
 crab: 0.0197
 
 4. The diffusion process exhibits a clear diversity pattern: high diversity at early steps, followed by gradual reduction as the model converges.
+
+5. 
+Top Confusions:
+
+the → ,: 6
+and → ,: 4
+is → the: 4
+sisters → was: 4
+on → in: 4
+american → japanese: 4
+that → ,: 4
+the → .: 3
+the → she: 3
+the → a: 3
+
+The confusion matrix reveals that the diffusion model frequently substitutes high-frequency tokens such as punctuation (e.g., “the → ,”, “and → ,”) and common function words (e.g., “the → a”, “is → the”), indicating a bias toward simpler and more probable tokens under uncertainty. At the same time, the model demonstrates partial semantic understanding, as seen in substitutions like “american → japanese,” suggesting it captures broad semantic categories.

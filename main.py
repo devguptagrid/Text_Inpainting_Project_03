@@ -24,7 +24,7 @@ from evaluation.rouge import compute_masked_rouge_l
 from inference.reverse_diffusion import reverse_diffusion_sample
 from inference.guidance import simple_guidance,span_guidance_with_penalty
 
-mode = "inference"   # "baseline" or "diffusion" or "inference" or "test"
+mode = "test"   # "baseline" or "diffusion" or "inference" or "test"
 
 if __name__ == "__main__":
     set_seed(42) ## Set random seed for reproducibility across runs, ensuring that the same sequence of random numbers is generated each time the code is executed, 
@@ -426,7 +426,7 @@ if __name__ == "__main__":
 
         best_val_acc = 0.0
         T = 12
-        mask_ratio = 0.10   
+        mask_ratio = 0.25   
         batch_size = 16
 
         # Create test dataset
@@ -471,78 +471,123 @@ if __name__ == "__main__":
         print(f"\nTest Loss: {test_loss:.4f}")
         print(f"Test Accuracy: {test_acc:.4f}")
 
+        from analysis.confusion_matrix import compute_confusion_matrix, print_top_confusions
+
+        all_confusion = None
+
+        for batch_idx, batch in enumerate(test_loader):
+
+        
+            if batch_idx > 30:
+                break
+
+            input_ids = batch["input_ids"].to(device)
+            target_ids = batch["target_ids"].to(device)
+            mask_positions = batch["mask_positions"].to(device)
+
+        generated, _, _ = reverse_diffusion_sample(
+            model=model,
+            diffusion_forward=diffusion_forward,
+            tokenizer=tokenizer,
+            input_ids=input_ids,
+            mask_positions=mask_positions,
+            T=T,
+            temperature=0.7,
+            top_k=0,
+            device=device
+        )
+
+        confusion = compute_confusion_matrix(
+            generated.cpu(),
+            target_ids.cpu(),
+            mask_positions.cpu(),
+            tokenizer
+        )
+
+        if all_confusion is None:
+            all_confusion = confusion
+        else:
+            for k in confusion:
+                for v in confusion[k]:
+                    all_confusion[k][v] += confusion[k][v]
+        
+
+        # print results
+
+        print_top_confusions(all_confusion)
+
         # =========================
         # BLEU Evaluation
         # =========================
 
-        print("\nComputing BLEU Score...\n")
+        # print("\nComputing BLEU Score...\n")
 
-        model.eval() ## Set the model to evaluation mode, which disables dropout and other training-specific behaviors, ensuring deterministic outputs during evaluation.
+        # model.eval() ## Set the model to evaluation mode, which disables dropout and other training-specific behaviors, ensuring deterministic outputs during evaluation.
 
-        guidance_strengths = [0.5, 1.0, 1.5, 2.0]
+        # guidance_strengths = [0.5, 1.0, 1.5, 2.0]
 
-        for strength in guidance_strengths:
+        # for strength in guidance_strengths:
     
-            print(f"\n--- Guidance Strength: {strength} ---")
+        #     print(f"\n--- Guidance Strength: {strength} ---")
 
-            total_bleu = 0
-            total_short = 0
-            num_samples = 0
+        #     total_bleu = 0
+        #     total_short = 0
+        #     num_samples = 0
 
-            for batch_idx, batch in enumerate(test_loader):
+        #     for batch_idx, batch in enumerate(test_loader):
 
-                if batch_idx > 30:
-                    break
+        #         if batch_idx > 30:
+        #             break
 
-                input_ids = batch["input_ids"].to(device)
-                target_ids = batch["target_ids"].to(device)
-                mask_positions = batch["mask_positions"].to(device)
+        #         input_ids = batch["input_ids"].to(device)
+        #         target_ids = batch["target_ids"].to(device)
+        #         mask_positions = batch["mask_positions"].to(device)
 
-                # create mask weights
-                mask_weights = torch.ones_like(input_ids, dtype=torch.float).to(device)
-                mask_weights[mask_positions] = 1.0
-                mask_weights[~mask_positions] = 0.2
+        #         # create mask weights
+        #         mask_weights = torch.ones_like(input_ids, dtype=torch.float).to(device)
+        #         mask_weights[mask_positions] = 1.0
+        #         mask_weights[~mask_positions] = 0.2
 
-                generated, _, _ = reverse_diffusion_sample(
-                    model=model,
-                    diffusion_forward=diffusion_forward,
-                    tokenizer=tokenizer,
-                    input_ids=input_ids,
-                    mask_positions=mask_positions,
-                    T=T,
-                    temperature=0.7,
-                    top_k=0,
-                    device=device,
-                    guidance_fn=simple_guidance,
-                    guidance_strength=strength,
-                    mask_weights=mask_weights
-                )
+        #         generated, _, _ = reverse_diffusion_sample(
+        #             model=model,
+        #             diffusion_forward=diffusion_forward,
+        #             tokenizer=tokenizer,
+        #             input_ids=input_ids,
+        #             mask_positions=mask_positions,
+        #             T=T,
+        #             temperature=0.7,
+        #             top_k=0,
+        #             device=device,
+        #             guidance_fn=simple_guidance,
+        #             guidance_strength=strength,
+        #             mask_weights=mask_weights
+        #         )
 
-                for i in range(input_ids.size(0)):
+        #         for i in range(input_ids.size(0)):
 
-                    bleu = compute_masked_bleu(
-                        target_ids[i].cpu(),
-                        generated[i].cpu(),
-                        mask_positions[i].cpu(),
-                        tokenizer
-                    )
+        #             bleu = compute_masked_bleu(
+        #                 target_ids[i].cpu(),
+        #                 generated[i].cpu(),
+        #                 mask_positions[i].cpu(),
+        #                 tokenizer
+        #             )
 
-                    short_pct = compute_short_token_percentage(
-                        generated[i].cpu(),
-                        mask_positions[i].cpu(),
-                        tokenizer
-                    )
+        #             short_pct = compute_short_token_percentage(
+        #                 generated[i].cpu(),
+        #                 mask_positions[i].cpu(),
+        #                 tokenizer
+        #             )
 
-                    total_bleu += bleu
-                    total_short += short_pct
-                    num_samples += 1
+        #             total_bleu += bleu
+        #             total_short += short_pct
+        #             num_samples += 1
 
-            avg_bleu = total_bleu / num_samples
-            avg_short = total_short / num_samples
+        #     avg_bleu = total_bleu / num_samples
+        #     avg_short = total_short / num_samples
 
-            print(f"BLEU: {avg_bleu:.4f}")
-            print(f"% Short Tokens: {avg_short:.4f}")
-            
+        #     print(f"BLEU: {avg_bleu:.4f}")
+        #     print(f"% Short Tokens: {avg_short:.4f}")
+
 
 
 
