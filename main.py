@@ -25,6 +25,10 @@ from evaluation.rouge import compute_masked_rouge_l
 from inference.reverse_diffusion import reverse_diffusion_sample
 from inference.guidance import simple_guidance,span_guidance_with_penalty
 
+import nltk
+nltk.download('averaged_perceptron_tagger_eng')
+
+
 mode = "test"   # "baseline" or "diffusion" or "inference" or "test"
 
 if __name__ == "__main__":
@@ -560,7 +564,13 @@ if __name__ == "__main__":
 
         # print confusion matrix
         print_top_confusions(all_confusion)
+
         
+
+        from analysis.pos_analysis import compute_pos_transitions, print_pos_transitions
+        pos_transitions = compute_pos_transitions(all_confusion)
+        print_pos_transitions(pos_transitions)
+
         # =========================
         # BLEU Evaluation
         # =========================

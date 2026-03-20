@@ -283,3 +283,20 @@ got: 0.0001
 sustained: 0.0001
 
 The transition matrix for the token “a” shows highly diverse transitions, with strong probabilities toward prepositions such as “in” and “with”, as well as substitutions to other articles like “the”. Unlike “the”, which exhibits a strong self-loop, “a” demonstrates less stability and frequently transitions to different syntactic categories, including verbs such as “received”.
+
+6. 
+
+Top POS Transitions:
+
+NN → NN: 81
+NN → IN: 20
+IN → IN: 20
+NN → DT: 17
+DT → DT: 15
+CD → NN: 10
+. → .: 10
+NN → CD: 9
+NN → JJ: 8
+NN → NNS: 7
+
+The POS transition analysis reveals that the model partially captures linguistic structure, with strong consistency in noun-to-noun (NN → NN) and preposition-to-preposition (IN → IN) transitions, indicating preservation of semantic categories. The presence of determiner-to-determiner (DT → DT) transitions further suggests that the model learns common grammatical substitutions such as “the” and “a”. However, the model also produces invalid transitions such as noun-to-determiner (NN → DT) and noun-to-number (NN → CD), demonstrating that it does not strictly enforce grammatical constraints.
