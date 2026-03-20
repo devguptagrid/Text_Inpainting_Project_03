@@ -377,7 +377,7 @@ if __name__ == "__main__":
 
         # plot_accuracy_vs_step(accuracy_per_step)
 
-        from analysis.transition_analysis import extract_top_transitions, decode_tokens
+        from analysis.transition_analysis import extract_top_transitions, decode_tokens, compute_stationary_distribution, print_top_stationary_tokens
 
         transitions = extract_top_transitions(probs_steps, mask_positions)
 
@@ -389,11 +389,15 @@ if __name__ == "__main__":
             for tok, p in zip(tokens, probs):
                 print(f"{tok}: {p:.4f}")
 
+        stationary = compute_stationary_distribution(probs_steps, mask_positions)
+        print_top_stationary_tokens(stationary, tokenizer)
+
+
         from analysis.graph_visualization import plot_transition_graph
 
         # choose a timestep (e.g., last step)
 
-        step = transitions[0]
+        step = transitions[11]
 
         tokens = decode_tokens(step["tokens"], tokenizer)
         probs = step["probs"]
