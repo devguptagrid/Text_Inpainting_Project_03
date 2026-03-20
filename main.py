@@ -25,7 +25,7 @@ from evaluation.rouge import compute_masked_rouge_l
 from inference.reverse_diffusion import reverse_diffusion_sample
 from inference.guidance import simple_guidance,span_guidance_with_penalty
 
-mode = "inference"   # "baseline" or "diffusion" or "inference" or "test"
+mode = "test"   # "baseline" or "diffusion" or "inference" or "test"
 
 if __name__ == "__main__":
     set_seed(42) ## Set random seed for reproducibility across runs, ensuring that the same sequence of random numbers is generated each time the code is executed, 
@@ -403,7 +403,7 @@ if __name__ == "__main__":
         similarity = F.cosine_similarity(stationary, unigram, dim=0)
         print(f"\nCosine Similarity: {similarity.item():.4f}")
 
-        
+
         from analysis.graph_visualization import plot_transition_graph
 
         # choose a timestep (e.g., last step)
@@ -414,6 +414,8 @@ if __name__ == "__main__":
         probs = step["probs"]
 
         plot_transition_graph(tokens, probs, title=f"Step {step['timestep']} Transition")
+
+        
 
         original_text = tokenizer.decode( ## Decodes the original target token IDs back into a human-readable string using the tokenizer, skipping any special tokens in the process.
             sample["target_ids"],
@@ -452,7 +454,7 @@ if __name__ == "__main__":
 
         best_val_acc = 0.0
         T = 12
-        mask_ratio = 0.25   
+        mask_ratio = 0.1   
         batch_size = 16
 
         # Create test dataset
@@ -498,9 +500,12 @@ if __name__ == "__main__":
         print(f"Test Accuracy: {test_acc:.4f}")
 
         from analysis.confusion_matrix import compute_confusion_matrix, print_top_confusions
-
+        from analysis.transition_matrix import compute_transition_matrix, print_transition_row
+        
+        vocab_size = tokenizer.vocab_size
+        T_matrix = torch.zeros((vocab_size, vocab_size))
         all_confusion = None
-
+    
         for batch_idx, batch in enumerate(test_loader):
 
         
@@ -511,7 +516,7 @@ if __name__ == "__main__":
             target_ids = batch["target_ids"].to(device)
             mask_positions = batch["mask_positions"].to(device)
 
-        generated, _, _ = reverse_diffusion_sample(
+        generated, logits_steps,probs_steps = reverse_diffusion_sample(
             model=model,
             diffusion_forward=diffusion_forward,
             tokenizer=tokenizer,
@@ -523,6 +528,13 @@ if __name__ == "__main__":
             device=device
         )
 
+        batch_T = compute_transition_matrix(
+            probs_steps,
+            target_ids.cpu(),
+            mask_positions.cpu(),
+            vocab_size
+        )
+        T_matrix += batch_T
         confusion = compute_confusion_matrix(
             generated.cpu(),
             target_ids.cpu(),
@@ -536,12 +548,19 @@ if __name__ == "__main__":
             for k in confusion:
                 for v in confusion[k]:
                     all_confusion[k][v] += confusion[k][v]
-        
+     
+        ## normalise transition matrix
+        row_sums = T_matrix.sum(dim=1, keepdim=True) + 1e-8
+        T_matrix = T_matrix / row_sums
 
-        # print results
+       
+        ##print transition example
+        token_id = tokenizer.convert_tokens_to_ids("a")
+        print_transition_row(T_matrix, tokenizer, token_id)
 
+        # print confusion matrix
         print_top_confusions(all_confusion)
-
+        
         # =========================
         # BLEU Evaluation
         # =========================
@@ -613,8 +632,3 @@ if __name__ == "__main__":
 
         #     print(f"BLEU: {avg_bleu:.4f}")
         #     print(f"% Short Tokens: {avg_short:.4f}")
-
-
-
-
-

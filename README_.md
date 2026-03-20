@@ -254,3 +254,32 @@ not purely context-based
 → hybrid behavior
 
 The stationary distribution shows partial alignment with the unigram token frequency distribution, with common tokens such as “the” and “a” appearing in both. However, the stationary distribution also includes context-specific tokens such as “lobster” and “crab,” which are absent from the unigram distribution. The cosine similarity of 0.56 indicates moderate correlation, suggesting that the diffusion model is influenced by token frequency but is not solely driven by it.
+
+1. 
+Transitions for token: the
+the: 0.4289
+an: 0.0957
+,: 0.0952
+to: 0.0476
+@: 0.0476
+armored: 0.0476
+turret: 0.0476
+3rd: 0.0470
+two: 0.0469
+a: 0.0468
+
+The transition matrix shows a strong self-loop for frequent tokens such as “the”, indicating that the diffusion process tends to preserve tokens during denoising. At the same time, the model allows transitions to grammatically similar tokens such as “a” and “an”, demonstrating an understanding of linguistic equivalence.
+
+Transitions for token: a
+in: 0.4007
+with: 0.2000
+the: 0.1979
+received: 0.1903
+suffered: 0.0091
+of: 0.0003
+one: 0.0002
+two: 0.0001
+got: 0.0001
+sustained: 0.0001
+
+The transition matrix for the token “a” shows highly diverse transitions, with strong probabilities toward prepositions such as “in” and “with”, as well as substitutions to other articles like “the”. Unlike “the”, which exhibits a strong self-loop, “a” demonstrates less stability and frequently transitions to different syntactic categories, including verbs such as “received”.

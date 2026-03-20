@@ -64,7 +64,7 @@ def print_top_stationary_tokens(stationary, tokenizer, top_k=10):
 
 
 from collections import Counter
-import torch
+
 
 def compute_unigram_distribution(dataset, tokenizer, vocab_size):
     """
@@ -103,4 +103,3 @@ def compare_stationary_unigram(stationary, unigram, tokenizer, top_k=10):
     print("\nTop Unigram Tokens:")
     for v, i in zip(uni_vals, uni_idx):
         print(f"{tokenizer.convert_ids_to_tokens(i.item())}: {v.item():.4f}")
-    
