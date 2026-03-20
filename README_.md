@@ -95,3 +95,82 @@ We implement span-level steering by assigning different constraints to each mask
 | Setting  | Train Acc | Val Acc |
 | -------- | --------- | ------- | with dropout
 | Span 10% | 49.80     | 50.97   |
+
+
+
+## task 3
+
+
+Step 0:
+,: 0.0618
+is: 0.0422
+##us: 0.0380
+##rus: 0.0374
+the: 0.0312
+lobster: 0.0286
+.: 0.0279
+in: 0.0222
+known: 0.0207
+=: 0.0202
+
+Step 1:
+the: 0.1193
+##us: 0.0975
+is: 0.0785
+,: 0.0615
+a: 0.0527
+length: 0.0393
+lobster: 0.0392
+or: 0.0392
+it: 0.0376
+in: 0.0203
+
+Step 5:
+the: 0.1176
+##us: 0.0978
+is: 0.0788
+,: 0.0589
+a: 0.0562
+lobster: 0.0392
+length: 0.0392
+or: 0.0391
+it: 0.0285
+of: 0.0202
+
+Step 6:
+the: 0.1175
+##us: 0.0971
+is: 0.0783
+,: 0.0588
+a: 0.0439
+lobster: 0.0392
+length: 0.0392
+or: 0.0391
+##rus: 0.0206
+in: 0.0196
+
+Step 10:
+the: 0.1172
+##us: 0.0784
+is: 0.0783
+,: 0.0588
+a: 0.0395
+lobster: 0.0393
+length: 0.0392
+##rus: 0.0392
+or: 0.0388
+crab: 0.0198
+
+Step 11:
+the: 0.1175
+##us: 0.0784
+is: 0.0783
+,: 0.0588
+a: 0.0392
+lobster: 0.0392
+length: 0.0392
+##rus: 0.0392
+or: 0.0390
+crab: 0.0197
+
+4. The diffusion process exhibits a clear diversity pattern: high diversity at early steps, followed by gradual reduction as the model converges.

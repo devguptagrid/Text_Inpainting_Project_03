@@ -377,6 +377,18 @@ if __name__ == "__main__":
 
         # plot_accuracy_vs_step(accuracy_per_step)
 
+        from analysis.transition_analysis import extract_top_transitions, decode_tokens
+
+        transitions = extract_top_transitions(probs_steps, mask_positions)
+
+        for step in transitions:
+            tokens = decode_tokens(step["tokens"], tokenizer)
+            probs = step["probs"]
+
+            print(f"\nStep {step['timestep']}:")
+            for tok, p in zip(tokens, probs):
+                print(f"{tok}: {p:.4f}")
+
         original_text = tokenizer.decode( ## Decodes the original target token IDs back into a human-readable string using the tokenizer, skipping any special tokens in the process.
             sample["target_ids"],
             skip_special_tokens=True
