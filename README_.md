@@ -328,3 +328,19 @@ Model parameters and activation sizes depend on sequence length and architecture
 
 
 Diversity analysis shows a clear trend where increasing mask ratio leads to lower self-BLEU scores and higher entropy and unique bigram ratios, indicating increased diversity in generated outputs. At low mask ratios, the model produces highly consistent and similar outputs due to strong contextual guidance. As the mask ratio increases, the model relies more on probabilistic sampling, leading to greater variation.
+
+4. diversity_vs_accuracy.png
+
+| Mask Ratio | Accuracy ↓ | Entropy ↑ | Self-BLEU ↓ |
+| ---------- | ---------- | --------- | ----------- |
+| 0.10       | 0.2320     | 6.86      | 0.92        |
+| 0.25       | 0.1922     | 7.10      | 0.83        |
+| 0.40       | 0.1639     | 7.21      | 0.74        |
+| 0.60       | 0.1207     | 7.12      | 0.64        |
+
+As mask ratio increases:
+
+Accuracy ↓ steadily
+Diversity ↑ (entropy ↑, BLEU ↓)
+🎯 Meaning:
+More tokens to generate → harder task → more randomness 

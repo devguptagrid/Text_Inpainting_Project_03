@@ -600,7 +600,9 @@ if __name__ == "__main__":
         num_samples_per_ratio = 50
 
         all_generations = {}
+        from evaluation.metrics import masked_accuracy
 
+        all_accuracies = {}
         for ratio in mask_ratios:
             print(f"\n--- Generating for Mask Ratio: {ratio} ---")
 
@@ -619,6 +621,8 @@ if __name__ == "__main__":
             )
 
             generations = []
+            accuracies = []
+
             count = 0
 
             for batch in test_loader:
@@ -627,9 +631,10 @@ if __name__ == "__main__":
                     break
 
                 input_ids = batch["input_ids"].to(device)
+                target_ids = batch["target_ids"].to(device)
                 mask_positions = batch["mask_positions"].to(device)
 
-                generated, _, _ = reverse_diffusion_sample(
+                generated, logits_steps, _ = reverse_diffusion_sample(
                     model=model,
                     diffusion_forward=diffusion_forward,
                     tokenizer=tokenizer,
@@ -640,12 +645,23 @@ if __name__ == "__main__":
                     top_k=20,
                     device=device
                 )
-
-                generations.append(generated[0].cpu())
+                final_logits = logits_steps[-1]   # (1, seq_len, vocab_size)
+                
+                generations.append(generated.squeeze(0).cpu())
                 count += 1
+                acc = masked_accuracy(
+                    final_logits.cpu(),
+                    target_ids.cpu(),
+                    mask_positions.cpu().bool()
+                )
+                
 
+                accuracies.append(acc)
+            avg_acc = sum(accuracies) / len(accuracies)
+            all_accuracies[ratio] = avg_acc
             all_generations[ratio] = generations
-        
+            
+
         from analysis.diversity_metrics import (compute_self_bleu,compute_ngram_entropy,compute_unique_bigrams)
 
         print("\n===== DIVERSITY METRICS =====")
@@ -662,6 +678,40 @@ if __name__ == "__main__":
             print(f"N-gram Entropy: {entropy:.4f}")
             print(f"Unique Bigrams %: {unique_bigrams:.4f}")
         
+        print("\n===== DIVERSITY vs ACCURACY =====")
+
+        for ratio in mask_ratios:
+            bleu = compute_self_bleu(all_generations[ratio], tokenizer)
+            entropy = compute_ngram_entropy(all_generations[ratio])
+            acc = all_accuracies[ratio]
+
+            print(f"\nMask Ratio {ratio}")
+            print(f"Accuracy: {acc:.4f}")
+            print(f"Self-BLEU: {bleu:.4f}")
+            print(f"Entropy: {entropy:.4f}")
+        
+        import matplotlib.pyplot as plt
+
+        ratios = []
+        accuracies = []
+        entropies = []
+
+        for r in mask_ratios:
+            ratios.append(r)
+            accuracies.append(all_accuracies[r])
+            entropies.append(compute_ngram_entropy(all_generations[r]))
+
+        plt.plot(entropies, accuracies, marker='o')
+        plt.xlabel("Entropy (Diversity)")
+        plt.ylabel("Accuracy")
+        plt.title("Diversity vs Accuracy Tradeoff")
+
+        for i, ratio in enumerate(ratios):
+            plt.text(entropies[i], accuracies[i], f"{ratio}")
+
+        plt.show()
+
+
 
 
         # ##print transition example
