@@ -344,3 +344,61 @@ Accuracy ↓ steadily
 Diversity ↑ (entropy ↑, BLEU ↓)
 🎯 Meaning:
 More tokens to generate → harder task → more randomness 
+
+5. 
+As mask ratio increases:
+Entropy: 6.86 → 7.21 → 7.12  
+Self-BLEU: 0.92 → 0.64  
+Unique bigrams: 0.14 → 0.26
+
+more tokens need to be generated  
+→ less context available  
+→ more uncertainty  
+→ more diversity in outputs
+
+6. Main bottlenecks -  
+
+    1. Model weights (BIGGEST)
+~418 MB
+
+Comes from:
+
+Transformer layers
+Embeddings
+
+    2. Activations (SECOND BIGGEST)
+~144 MB
+
+Depends on:
+
+batch_size × seq_len × hidden_size × layers
+
+    3. Diffusion steps (IMPORTANT)
+T = 12 steps
+
+Each step:
+
+forward pass
+stores logits/probs
+
+Optimizations - 
+
+1. Mixed Precision (FP16)
+
+    model.half()
+
+    cuts memory ~50%
+
+2. Reduce sequence length
+
+    truncate long inputs
+
+    reduces activation memory
+
+3. Gradient Checkpointing
+
+    store fewer activations  
+    
+    recompute during backward
+
+    reduces memory but slightly slower
