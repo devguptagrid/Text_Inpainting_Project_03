@@ -25,6 +25,7 @@ from evaluation.rouge import compute_masked_rouge_l
 from inference.reverse_diffusion import reverse_diffusion_sample
 from inference.guidance import simple_guidance,span_guidance_with_penalty
 
+from analysis.memory_analysis import compute_model_size, get_mps_memory, MemoryTracker
 import nltk
 nltk.download('averaged_perceptron_tagger_eng')
 
@@ -458,7 +459,7 @@ if __name__ == "__main__":
 
         best_val_acc = 0.0
         T = 12
-        mask_ratio = 0.1   
+        mask_ratio = 0.40 
         batch_size = 16
 
         # Create test dataset
@@ -503,6 +504,18 @@ if __name__ == "__main__":
         print(f"\nTest Loss: {test_loss:.4f}")
         print(f"Test Accuracy: {test_acc:.4f}")
 
+        # -------------------------
+
+        # MEMORY PROFILING SETUP
+
+        # -------------------------
+
+        model_size = compute_model_size(model)
+
+        tracker = MemoryTracker()
+
+        print(f"\nInitial Memory: {get_mps_memory():.2f} MB")
+
         from analysis.confusion_matrix import compute_confusion_matrix, print_top_confusions
         from analysis.transition_matrix import compute_transition_matrix, print_transition_row
         
@@ -531,6 +544,7 @@ if __name__ == "__main__":
             top_k=0,
             device=device
         )
+        tracker.update()
 
         batch_T = compute_transition_matrix(
             probs_steps,
@@ -557,19 +571,38 @@ if __name__ == "__main__":
         row_sums = T_matrix.sum(dim=1, keepdim=True) + 1e-8
         T_matrix = T_matrix / row_sums
 
-       
-        ##print transition example
-        token_id = tokenizer.convert_tokens_to_ids("a")
-        print_transition_row(T_matrix, tokenizer, token_id)
+       # -------------------------
 
-        # print confusion matrix
-        print_top_confusions(all_confusion)
+        # MEMORY RESULTS
+
+        # -------------------------
+
+        peak_memory = tracker.get_peak()
+
+        print(f"\nPeak Memory Usage: {peak_memory:.2f} MB")
+
+        batch_size = input_ids.size(0)
+        seq_len = input_ids.size(1)
+        hidden_size = 768  # BERT base
+
+        activation_memory = (
+            batch_size * seq_len * hidden_size * 4 * 12
+        ) / (1024 ** 2)  # MB
+
+        print(f"Estimated Activation Memory: {activation_memory:.2f} MB")
+
+        # ##print transition example
+        # token_id = tokenizer.convert_tokens_to_ids("a")
+        # print_transition_row(T_matrix, tokenizer, token_id)
+
+        # # print confusion matrix
+        # print_top_confusions(all_confusion)
 
         
 
-        from analysis.pos_analysis import compute_pos_transitions, print_pos_transitions
-        pos_transitions = compute_pos_transitions(all_confusion)
-        print_pos_transitions(pos_transitions)
+        # from analysis.pos_analysis import compute_pos_transitions, print_pos_transitions
+        # pos_transitions = compute_pos_transitions(all_confusion)
+        # print_pos_transitions(pos_transitions)
 
         # =========================
         # BLEU Evaluation

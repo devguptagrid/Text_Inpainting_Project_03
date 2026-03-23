@@ -300,3 +300,17 @@ NN → JJ: 8
 NN → NNS: 7
 
 The POS transition analysis reveals that the model partially captures linguistic structure, with strong consistency in noun-to-noun (NN → NN) and preposition-to-preposition (IN → IN) transitions, indicating preservation of semantic categories. The presence of determiner-to-determiner (DT → DT) transitions further suggests that the model learns common grammatical substitutions such as “the” and “a”. However, the model also produces invalid transitions such as noun-to-determiner (NN → DT) and noun-to-number (NN → CD), demonstrating that it does not strictly enforce grammatical constraints.
+
+
+## task 5
+1. 
+2. 
+Model Parameters: 109,525,050
+Model Size: 417.80 MB
+
+Initial Memory: 417.82 MB
+
+Peak Memory Usage: 417.92 MB
+Estimated Activation Memory: 144.00 MB
+
+The model occupies approximately 417.8 MB of memory, corresponding to its 109 million parameters. While MPS-reported peak memory usage remains close to the model size (~417.9 MB), this underestimates actual runtime memory due to backend limitations. Therefore, activation memory is estimated analytically and found to be approximately 144 MB, reflecting the memory required for intermediate representations during forward passes. Since the architecture is based on BERT, no KV cache is used, and memory usage is primarily dominated by activations.
