@@ -314,3 +314,17 @@ Peak Memory Usage: 417.92 MB
 Estimated Activation Memory: 144.00 MB
 
 The model occupies approximately 417.8 MB of memory, corresponding to its 109 million parameters. While MPS-reported peak memory usage remains close to the model size (~417.9 MB), this underestimates actual runtime memory due to backend limitations. Therefore, activation memory is estimated analytically and found to be approximately 144 MB, reflecting the memory required for intermediate representations during forward passes. Since the architecture is based on BERT, no KV cache is used, and memory usage is primarily dominated by activations.
+
+Model parameters and activation sizes depend on sequence length and architecture, not the number of masked tokens. This indicates that mask ratio affects prediction difficulty and output diversity, but does not significantly impact memory consumption.
+
+
+3. 
+| Mask Ratio | Self-BLEU ↓ | Entropy ↑ | Unique Bigrams ↑ |
+| ---------- | ----------- | --------- | ---------------- |
+| 0.10       | 0.9227      | 6.86      | 0.1467           |
+| 0.25       | 0.8263      | 7.10      | 0.2095           |
+| 0.40       | 0.7375      | 7.21      | 0.2473           |
+| 0.60       | 0.6418      | 7.12      | 0.2598           |
+
+
+Diversity analysis shows a clear trend where increasing mask ratio leads to lower self-BLEU scores and higher entropy and unique bigram ratios, indicating increased diversity in generated outputs. At low mask ratios, the model produces highly consistent and similar outputs due to strong contextual guidance. As the mask ratio increases, the model relies more on probabilistic sampling, leading to greater variation.

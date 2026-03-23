@@ -522,7 +522,6 @@ if __name__ == "__main__":
         vocab_size = tokenizer.vocab_size
         T_matrix = torch.zeros((vocab_size, vocab_size))
         all_confusion = None
-    
         for batch_idx, batch in enumerate(test_loader):
 
         
@@ -590,6 +589,80 @@ if __name__ == "__main__":
         ) / (1024 ** 2)  # MB
 
         print(f"Estimated Activation Memory: {activation_memory:.2f} MB")
+
+        # =========================
+
+        # TASK 5: GENERATE 50 SAMPLES PER MASK RATIO
+
+        # =========================
+
+        mask_ratios = [0.10, 0.25, 0.40, 0.60]
+        num_samples_per_ratio = 50
+
+        all_generations = {}
+
+        for ratio in mask_ratios:
+            print(f"\n--- Generating for Mask Ratio: {ratio} ---")
+
+            test_data = TextInpaintingDataset(
+                sequences=test_sequences,
+                tokenizer=tokenizer,
+                mask_type="span",
+                mask_ratio=ratio,
+                dynamic_masking=False,
+            )
+
+            test_loader = DataLoader(
+                test_data,
+                batch_size=1,   # IMPORTANT
+                shuffle=False,
+            )
+
+            generations = []
+            count = 0
+
+            for batch in test_loader:
+
+                if count >= num_samples_per_ratio:
+                    break
+
+                input_ids = batch["input_ids"].to(device)
+                mask_positions = batch["mask_positions"].to(device)
+
+                generated, _, _ = reverse_diffusion_sample(
+                    model=model,
+                    diffusion_forward=diffusion_forward,
+                    tokenizer=tokenizer,
+                    input_ids=input_ids,
+                    mask_positions=mask_positions,
+                    T=T,
+                    temperature=0.8,
+                    top_k=20,
+                    device=device
+                )
+
+                generations.append(generated[0].cpu())
+                count += 1
+
+            all_generations[ratio] = generations
+        
+        from analysis.diversity_metrics import (compute_self_bleu,compute_ngram_entropy,compute_unique_bigrams)
+
+        print("\n===== DIVERSITY METRICS =====")
+
+        for ratio in mask_ratios:
+            gens = all_generations[ratio]
+
+            self_bleu = compute_self_bleu(gens, tokenizer)
+            entropy = compute_ngram_entropy(gens)
+            unique_bigrams = compute_unique_bigrams(gens)
+
+            print(f"\n--- Mask Ratio {ratio} ---")
+            print(f"Self-BLEU: {self_bleu:.4f}")
+            print(f"N-gram Entropy: {entropy:.4f}")
+            print(f"Unique Bigrams %: {unique_bigrams:.4f}")
+        
+
 
         # ##print transition example
         # token_id = tokenizer.convert_tokens_to_ids("a")
