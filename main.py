@@ -467,7 +467,7 @@ if __name__ == "__main__":
             sequences=test_sequences,
             tokenizer=tokenizer,
             mask_type="span",
-            mask_ratio=mask_ratio,
+            mask_ratios=[0.1, 0.25, 0.4],
             dynamic_masking=False,  # IMPORTANT
         )
 
@@ -523,7 +523,7 @@ if __name__ == "__main__":
         T_matrix = torch.zeros((vocab_size, vocab_size))
         all_confusion = None
         for batch_idx, batch in enumerate(test_loader):
-
+            print(batch["mask_ratio"].tolist())
         
             if batch_idx > 30:
                 break
@@ -610,7 +610,7 @@ if __name__ == "__main__":
                 sequences=test_sequences,
                 tokenizer=tokenizer,
                 mask_type="span",
-                mask_ratio=ratio,
+                mask_ratios=[ratio],
                 dynamic_masking=False,
             )
 
@@ -626,7 +626,7 @@ if __name__ == "__main__":
             count = 0
 
             for batch in test_loader:
-
+                
                 if count >= num_samples_per_ratio:
                     break
 
