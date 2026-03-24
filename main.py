@@ -523,7 +523,7 @@ if __name__ == "__main__":
         T_matrix = torch.zeros((vocab_size, vocab_size))
         all_confusion = None
         for batch_idx, batch in enumerate(test_loader):
-            print(batch["mask_ratio"].tolist())
+            ##print(batch["mask_ratio"].tolist())
         
             if batch_idx > 30:
                 break

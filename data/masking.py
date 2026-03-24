@@ -40,8 +40,8 @@ def span_mask_sequence( ##Masks contiguous spans of tokens, which can be more ch
     input_ids,
     mask_token_id,
     mask_ratio=0.25,
-    min_span_length=3,
-    max_span_length=10,
+    min_span_length=1,
+    max_span_length=20,
     special_token_ids=None,
 ):
 
@@ -63,9 +63,14 @@ def span_mask_sequence( ##Masks contiguous spans of tokens, which can be more ch
         special_token_ids = set()
 
     while total_masked < num_to_mask:
+        # 🔥 remaining tokens to mask 
+        remaining = num_to_mask - total_masked
 
         span_length = random.randint(min_span_length, max_span_length) ## randomly determine the length of the span to mask within the specified range
-        start_idx = random.randint(0, seq_len - span_length) ## randomly select a starting index for the span, ensuring it fits within the sequence length
+        span_length = min(span_length, remaining)
+        ##print(f"Span length: {span_length}, Remaining: {remaining}")
+
+        start_idx = random.randint(0, max(0,seq_len - span_length)) ## randomly select a starting index for the span, ensuring it fits within the sequence length
 
         for i in range(start_idx, start_idx + span_length):
 

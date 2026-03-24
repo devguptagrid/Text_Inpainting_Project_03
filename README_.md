@@ -412,3 +412,12 @@ Optimizations -
 [0.1, 0.1, 0.1, 0.25, 0.4, 0.1, 0.4, 0.25, 0.4, 0.4, 0.25, 0.25, 0.1, 0.25, 0.25, 0.25]
 
 Different mask ratios in single batch of size 16.
+
+3. 
+Span length: 3, Remaining: 99
+Span length: 17, Remaining: 96
+Span length: 7, Remaining: 79
+Span length: 3, Remaining: 72
+Span length: 19, Remaining: 69
+
+The span masking function produces variable-length spans ranging from 1 to 20 tokens. Debug outputs confirm that the masking process adapts dynamically to the remaining masking budget
