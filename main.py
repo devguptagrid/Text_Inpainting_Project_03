@@ -10,7 +10,7 @@ from data.preprocessing import get_tokenizer, tokenize_dataset, create_fixed_len
 from data.dataset import TextInpaintingDataset
 from models.transformer import BertDenoiser
 from training.trainer import train_one_epoch, evaluate
-
+from data.mask_batch_sampler import MaskBatchSampler
 from torch.utils.data import DataLoader
 import torch
 import torch.nn.functional as F
@@ -145,27 +145,16 @@ if __name__ == "__main__":
 
         best_val_acc = 0.0
 
-        train_data = TextInpaintingDataset( ## Creates a TextInpaintingDataset for the training data, which will apply the specified masking strategy.
-            sequences=train_sequences,
-            tokenizer=tokenizer,
-            mask_type=mask_type,
-            mask_ratio=mask_ratio,
-            dynamic_masking=True,
-        )
+        
 
         val_data = TextInpaintingDataset( ## Creates a TextInpaintingDataset for the validation data, which will apply the specified masking strategy in a fixed manner for consistent evaluation.
             sequences=val_sequences,
             tokenizer=tokenizer,
             mask_type=mask_type,
-            mask_ratio=mask_ratio,
+            mask_ratios=[0.1,0.25,0.4],
             dynamic_masking=False,
         )
-
-        train_loader = DataLoader( ## Creates a DataLoader for the training dataset, which will handle batching and shuffling of the data during training.
-            train_data,
-            batch_size=16,
-            shuffle=True,
-        )
+        
 
         val_loader = DataLoader( ## Creates a DataLoader for the validation dataset, which will handle batching of the data during evaluation, without shuffling to maintain consistency.
             val_data,
@@ -184,11 +173,34 @@ if __name__ == "__main__":
             model.parameters(),
             lr=3e-5,
         )
-        print(train_loader.dataset[0].keys())
+        #print(train_loader.dataset[0].keys())
         for epoch in range(num_epochs):
 
             print(f"\nEpoch {epoch+1}/{num_epochs}")
 
+            # 🔥 ADD THIS BLOCK
+            if epoch < num_epochs // 3:
+                current_ratios = [0.1]
+            elif epoch < 2 * num_epochs // 3:
+                current_ratios = [0.1, 0.25]
+            else:
+                current_ratios = [0.1, 0.25, 0.4]
+            print("Current mask ratios:", current_ratios)
+            # 🔥 RECREATE dataset each epoch
+            train_data = TextInpaintingDataset(
+                sequences=train_sequences,
+                tokenizer=tokenizer,
+                mask_type=mask_type,
+                mask_ratios=current_ratios,
+                dynamic_masking=False,
+            )
+
+            sampler = MaskBatchSampler(train_data, batch_size=16)
+
+            train_loader = DataLoader(
+                train_data,
+                batch_sampler=sampler
+            )
             train_loss, train_acc = train_diffusion_epoch( ## Trains the diffusion model for one epoch by iterating over the training dataloader, sampling random timesteps, corrupting the target sequences according to the diffusion process, and computing the loss only on the masked positions to update the model parameters.
                 model,
                 train_loader,
@@ -217,7 +229,7 @@ if __name__ == "__main__":
                 best_val_acc = val_acc
                 torch.save(
                     model.state_dict(),
-                    f"diffusion_{mask_type}_{mask_ratio}_T{T}_dropout_0.1.pt"
+                    f"diffusion_{mask_type}_multi_ratio_T{T}_dropout_0.1.pt"
                 )
                 print("✅ Best model saved.")
 
