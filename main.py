@@ -518,59 +518,103 @@ if __name__ == "__main__":
         print(f"Test Accuracy: {test_acc:.4f}")
 
 
-        print("\n===== TOKENS / SEC BENCHMARK =====")
+        # print("\n===== TOKENS / SEC BENCHMARK =====")
 
-        mask_ratios = [0.1, 0.25, 0.4]
-        batch_sizes = [1, 4, 8, 16, 32]
+        # mask_ratios = [0.1, 0.25, 0.4]
+        # batch_sizes = [1, 4, 8, 16, 32]
 
-        for ratio in mask_ratios:
-            print(f"\n--- Mask Ratio: {ratio} ---")
+        # for ratio in mask_ratios:
+        #     print(f"\n--- Mask Ratio: {ratio} ---")
 
-            for bs in batch_sizes:
+        #     for bs in batch_sizes:
 
-                bench_data = TextInpaintingDataset(
-                    sequences=test_sequences,
-                    tokenizer=tokenizer,
-                    mask_type="span",
-                    mask_ratios=[ratio],
-                    dynamic_masking=False,
-                )
+        #         bench_data = TextInpaintingDataset(
+        #             sequences=test_sequences,
+        #             tokenizer=tokenizer,
+        #             mask_type="span",
+        #             mask_ratios=[ratio],
+        #             dynamic_masking=False,
+        #         )
 
-                bench_loader = DataLoader(
-                    bench_data,
-                    batch_size=bs,
-                    shuffle=False,
-                )
+        #         bench_loader = DataLoader(
+        #             bench_data,
+        #             batch_size=bs,
+        #             shuffle=False,
+        #         )
 
-                total_tokens = 0
-                start = time.time()
+        #         total_tokens = 0
+        #         start = time.time()
 
-                for i, batch in enumerate(bench_loader):
+        #         for i, batch in enumerate(bench_loader):
 
-                    if i > 20:   # limit runtime
-                        break
+        #             if i > 20:   # limit runtime
+        #                 break
 
-                    input_ids = batch["input_ids"].to(device)
-                    mask_positions = batch["mask_positions"].to(device)
+        #             input_ids = batch["input_ids"].to(device)
+        #             mask_positions = batch["mask_positions"].to(device)
 
-                    generated, _, _ = reverse_diffusion_sample(
-                        model=model,
-                        diffusion_forward=diffusion_forward,
-                        tokenizer=tokenizer,
-                        input_ids=input_ids,
-                        mask_positions=mask_positions,
-                        T=T,
-                        temperature=0.7,
-                        device=device
-                    )
+        #             generated, _, _ = reverse_diffusion_sample(
+        #                 model=model,
+        #                 diffusion_forward=diffusion_forward,
+        #                 tokenizer=tokenizer,
+        #                 input_ids=input_ids,
+        #                 mask_positions=mask_positions,
+        #                 T=T,
+        #                 temperature=0.7,
+        #                 device=device
+        #             )
 
-                    total_tokens += input_ids.numel()
+        #             total_tokens += input_ids.numel()
 
-                elapsed = time.time() - start
-                tokens_per_sec = total_tokens / elapsed
+        #         elapsed = time.time() - start
+        #         tokens_per_sec = total_tokens / elapsed
 
-                print(f"Batch {bs}: {tokens_per_sec:.2f} tokens/sec")
-        # -------------------------
+        #         print(f"Batch {bs}: {tokens_per_sec:.2f} tokens/sec")
+
+        print("\n===== LATENCY COMPARISON =====")
+
+        sample = test_data[0]
+
+        input_ids = sample["input_ids"].unsqueeze(0).to(device)
+        mask_positions = sample["mask_positions"].unsqueeze(0).to(device)
+
+        # Batch inference
+        start = time.time()
+
+        generated, _, _ = reverse_diffusion_sample(
+            model=model,
+            diffusion_forward=diffusion_forward,
+            tokenizer=tokenizer,
+            input_ids=input_ids,
+            mask_positions=mask_positions,
+            T=T,
+            temperature=0.7,
+            device=device
+        )
+
+        batch_time = time.time() - start
+
+        # Sequential (simulation)
+        start = time.time()
+
+        for i in range(input_ids.size(1)):
+            _ = reverse_diffusion_sample(
+                model=model,
+                diffusion_forward=diffusion_forward,
+                tokenizer=tokenizer,
+                input_ids=input_ids,
+                mask_positions=mask_positions,
+                T=T,
+                temperature=0.7,
+                device=device
+            )
+
+        seq_time = time.time() - start
+
+        print(f"Batch Time: {batch_time:.4f} sec")
+        print(f"Sequential Time: {seq_time:.4f} sec")
+        print(f"Speedup: {seq_time / batch_time:.2f}x")
+                # -------------------------
 
         # MEMORY PROFILING SETUP
 

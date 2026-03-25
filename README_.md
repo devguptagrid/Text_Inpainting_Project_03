@@ -449,3 +449,11 @@ Example:
 
 0.10 → best at batch 4  
 0.40 → best at batch 8 
+
+6. 
+===== LATENCY COMPARISON =====
+Batch Time: 0.3413 sec
+Sequential Time: 67.4623 sec
+Speedup: 197.65x
+
+The observed speedup of ~200× arises from comparing batched diffusion inference with a naive sequential simulation that recomputes the full diffusion process for each token independently. This leads to a quadratic increase in computation for the sequential case. In practice, more realistic sequential generation methods reuse intermediate computations, resulting in smaller speedups (typically 4–6×).
