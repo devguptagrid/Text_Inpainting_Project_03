@@ -421,3 +421,17 @@ Span length: 3, Remaining: 72
 Span length: 19, Remaining: 69
 
 The span masking function produces variable-length spans ranging from 1 to 20 tokens. Debug outputs confirm that the masking process adapts dynamically to the remaining masking budget
+
+
+2. 4. 
+
+| Epoch | Mask Ratios Used | Train Loss | Train Acc | Val Loss | Val Acc |
+| ----- | ---------------- | ---------- | --------- | -------- | ------- |
+| 1     | 0.10             | 4.2730     | 0.3560    | 3.6811   | 0.4202  |
+| 2     | 0.10             | 3.4452     | 0.4375    | 3.6229   | 0.4251  |
+| 3     | 0.10, 0.25       | 3.3974     | 0.4351    | 3.5513   | 0.4333  |
+| 4     | 0.10, 0.25       | 3.3171     | 0.4410    | 3.5175   | 0.4370  |
+| 5     | 0.10, 0.25, 0.40 | 3.3215     | 0.4347    | 3.5135   | 0.4371  |
+| 6     | 0.10, 0.25, 0.40 | 3.2411     | 0.4413    | 3.4756   | 0.4421  |
+
+The table shows progressive curriculum learning where masking difficulty increases across epochs, leading to stable improvements in validation accuracy.

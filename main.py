@@ -30,7 +30,7 @@ import nltk
 nltk.download('averaged_perceptron_tagger_eng')
 
 
-mode = "test"   # "baseline" or "diffusion" or "inference" or "test"
+mode = "diffusion"   # "baseline" or "diffusion" or "inference" or "test"
 
 if __name__ == "__main__":
     set_seed(42) ## Set random seed for reproducibility across runs, ensuring that the same sequence of random numbers is generated each time the code is executed, 
@@ -68,7 +68,7 @@ if __name__ == "__main__":
         stride=32
     )
 
-    num_epochs = 4 # Set to 4 for quick testing
+    num_epochs = 6 # Set to 4 for quick testing
 
     if mode == "baseline": ## Runs the baseline training loop using a standard BERT denoising autoencoder architecture.
 

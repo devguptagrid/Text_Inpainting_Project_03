@@ -3,7 +3,7 @@ import random
 
 class MaskBatchSampler(Sampler):
 
-    def __init(self, dataset, batch_size):
+    def __init__(self, dataset, batch_size):
         self.dataset = dataset
         self.batch_size = batch_size
 
