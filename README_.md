@@ -435,3 +435,17 @@ The span masking function produces variable-length spans ranging from 1 to 20 to
 | 6     | 0.10, 0.25, 0.40 | 3.2411     | 0.4413    | 3.4756   | 0.4421  |
 
 The table shows progressive curriculum learning where masking difficulty increases across epochs, leading to stable improvements in validation accuracy.
+
+5. 
+| Mask Ratio | Batch 1 | Batch 4 | Batch 8 | Batch 16 | Batch 32 |
+| ---------- | ------- | ------- | ------- | -------- | -------- |
+| 0.10       | 1005.37 | 1258.02 | 1228.35 | 967.95   | 491.73   |
+| 0.25       | 849.66  | 1220.08 | 1008.75 | 901.06   | 494.60   |
+| 0.40       | 896.66  | 1006.57 | 1133.80 | 942.99   | 597.95   |
+
+Best performance ≠ largest batch
+Peak performance around Batch 4–8 ✔
+Example:
+
+0.10 → best at batch 4  
+0.40 → best at batch 8 

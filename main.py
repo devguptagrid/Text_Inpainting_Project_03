@@ -28,9 +28,10 @@ from inference.guidance import simple_guidance,span_guidance_with_penalty
 from analysis.memory_analysis import compute_model_size, get_mps_memory, MemoryTracker
 import nltk
 nltk.download('averaged_perceptron_tagger_eng')
+import time
 
 
-mode = "diffusion"   # "baseline" or "diffusion" or "inference" or "test"
+mode = "test"   # "baseline" or "diffusion" or "inference" or "test"
 
 if __name__ == "__main__":
     set_seed(42) ## Set random seed for reproducibility across runs, ensuring that the same sequence of random numbers is generated each time the code is executed, 
@@ -471,7 +472,7 @@ if __name__ == "__main__":
 
         best_val_acc = 0.0
         T = 12
-        mask_ratio = 0.40 
+        mask_ratio = 0.25
         batch_size = 16
 
         # Create test dataset
@@ -496,7 +497,7 @@ if __name__ == "__main__":
         ).to(device)
 
         model.load_state_dict( ## Loads the trained model weights from the specified file, mapping them to the appropriate device for evaluation.
-            torch.load("diffusion_span_0.1_T12_dropout_0.1.pt", map_location=device)
+            torch.load("diffusion_span_multi_ratio_T12_dropout_0.1.pt", map_location=device)
         )
 
         diffusion_forward = DiscreteDiffusionForward( ## Initializes the forward diffusion process with the specified number of steps (T) and the mask token ID from the tokenizer, and moves it to the appropriate device for evaluation.
@@ -516,6 +517,59 @@ if __name__ == "__main__":
         print(f"\nTest Loss: {test_loss:.4f}")
         print(f"Test Accuracy: {test_acc:.4f}")
 
+
+        print("\n===== TOKENS / SEC BENCHMARK =====")
+
+        mask_ratios = [0.1, 0.25, 0.4]
+        batch_sizes = [1, 4, 8, 16, 32]
+
+        for ratio in mask_ratios:
+            print(f"\n--- Mask Ratio: {ratio} ---")
+
+            for bs in batch_sizes:
+
+                bench_data = TextInpaintingDataset(
+                    sequences=test_sequences,
+                    tokenizer=tokenizer,
+                    mask_type="span",
+                    mask_ratios=[ratio],
+                    dynamic_masking=False,
+                )
+
+                bench_loader = DataLoader(
+                    bench_data,
+                    batch_size=bs,
+                    shuffle=False,
+                )
+
+                total_tokens = 0
+                start = time.time()
+
+                for i, batch in enumerate(bench_loader):
+
+                    if i > 20:   # limit runtime
+                        break
+
+                    input_ids = batch["input_ids"].to(device)
+                    mask_positions = batch["mask_positions"].to(device)
+
+                    generated, _, _ = reverse_diffusion_sample(
+                        model=model,
+                        diffusion_forward=diffusion_forward,
+                        tokenizer=tokenizer,
+                        input_ids=input_ids,
+                        mask_positions=mask_positions,
+                        T=T,
+                        temperature=0.7,
+                        device=device
+                    )
+
+                    total_tokens += input_ids.numel()
+
+                elapsed = time.time() - start
+                tokens_per_sec = total_tokens / elapsed
+
+                print(f"Batch {bs}: {tokens_per_sec:.2f} tokens/sec")
         # -------------------------
 
         # MEMORY PROFILING SETUP
