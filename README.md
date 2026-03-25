@@ -1,466 +1,861 @@
-# Diffusion-Based Text Inpainting using Discrete Diffusion (D3PM)
+# 44. Text Inpainting (Span Fill)
 
-## Overview
+# 📘 Task 1: Batched Inpainting with Parallel Mask Conditioning
 
-This project implements a **Discrete Diffusion Probabilistic Model (D3PM-style)** for span-based text inpainting using a pretrained BERT backbone.
+## 🎯 Objective
 
-The development progressed through:
-
-1. Transformer from scratch
-2. Pretrained BERT baseline
-3. Diffusion without mask conditioning
-4. Diffusion with explicit mask conditioning
-5. Conditioning dropout
-6. Decoding experiments (temperature & top-k)
-7. Evaluation (Accuracy, BLEU, ROUGE-L)
-8. Interactive Gradio UI
+This task focuses on improving the efficiency and scalability of diffusion-based text inpainting by introducing **parallel mask conditioning**, **curriculum learning**, and **batch-level optimization**.
 
 ---
 
-# Dataset
+## 🧩 1. Parallel Mask Conditioning (Batch-Level Support)
 
-We use **WikiText-2 (raw version)** from HuggingFace:
+The conditioning mechanism was redesigned to support **multiple masking patterns within a single batch**.
 
-```python
-load_dataset("wikitext", "wikitext-2-raw-v1")
-```
+### Implementation
 
-### Original Dataset Sizes
+- Each sample in a batch is assigned a mask ratio from:
+[0.1, 0.25, 0.4] 
+- Enables heterogeneous masking within the same batch.
 
-| Split       | Samples |
-|------------|----------|
-| Train      | 36,718   |
-| Validation | 3,760    |
-| Test       | 4,358    |
+### Example Output
+[0.4, 0.1, 0.25, 0.25, 0.25, 0.1, 0.25, 0.4, 0.1, 0.25, 0.25, 0.4, 0.1, 0.1, 0.25, 0.25]  
+[0.25, 0.1, 0.4, 0.4, 0.25, 0.4, 0.4, 0.25, 0.1, 0.4, 0.25, 0.4, 0.1, 0.25, 0.25, 0.25]  
+[0.1, 0.1, 0.1, 0.25, 0.4, 0.1, 0.4, 0.25, 0.4, 0.4, 0.25, 0.25, 0.1, 0.25, 0.25, 0.25]
 
-### After Cleaning
-(Removed empty lines, headers, short fragments <10 characters)
 
-| Split       | Samples |
-|------------|----------|
-| Train      | 23,547   |
-| Validation | 2,454    |
-| Test       | 2,850    |
+
+### Insight
+
+- Different mask difficulties are processed simultaneously  
+
 
 ---
 
-# Preprocessing Pipeline
+## 🧠 2. Mask Encoder (Parallel Conditioning)
 
-1. Tokenization: `bert-base-uncased`
-2. Fixed-length chunking (256 tokens)
-3. Sliding window expansion → ~73k sequences
-4. Masking strategies:
-   - Random token masking
-   - Contiguous span masking
-5. Dynamic masking during training
-6. Fixed masking during validation/test
+A **mask encoder** was introduced to explicitly indicate masked positions.
+
+### Implementation
+mask_embedding = Embedding(2, hidden_dim)  
+embeddings = token_emb + timestep_emb + mask_emb
+
+
+
+### Benefit
+
+- Helps model identify masked tokens explicitly  
+- Improves denoising performance  
 
 ---
 
-# Phase 1 — Transformer From Scratch
+## 🔗 3. Variable-Length Span Masking
 
-Custom Transformer encoder built using PyTorch:
+Supports dynamic span masking between **1–20 tokens**.
 
-- Hidden size: 256 → 384
-- Layers: 4 → 6
-- Attention heads: 4 → 6
-- Masked cross-entropy loss
+### Debug Output
+Span length: 3, Remaining: 99  
+Span length: 17, Remaining: 96  
+Span length: 7, Remaining: 79  
+Span length: 19, Remaining: 69
 
-### Result
-Masked-token accuracy: **~5–6%**
+## 📚 4. Mask Batch Sampler + Curriculum Learning
+
+A **MaskBatchSampler** groups samples by difficulty and combines with epoch-wise curriculum learning.
+
+### Curriculum Strategy
+
+| Epoch | Mask Ratios |
+|------|-------------|
+| 1–2  | 0.10        |
+| 3–4  | 0.10, 0.25  |
+| 5–6  | 0.10, 0.25, 0.40 |
+
+---
+
+### Training Results
+
+| Epoch | Mask Ratios Used | Train Loss | Train Acc | Val Loss | Val Acc |
+|------|------------------|-----------|----------|----------|---------|
+| 1    | 0.10             | 4.2730    | 0.3560   | 3.6811   | 0.4202  |
+| 2    | 0.10             | 3.4452    | 0.4375   | 3.6229   | 0.4251  |
+| 3    | 0.10, 0.25       | 3.3974    | 0.4351   | 3.5513   | 0.4333  |
+| 4    | 0.10, 0.25       | 3.3171    | 0.4410   | 3.5175   | 0.4370  |
+| 5    | 0.10, 0.25, 0.40 | 3.3215    | 0.4347   | 3.5135   | 0.4371  |
+| 6    | 0.10, 0.25, 0.40 | 3.2411    | 0.4413   | 3.4756   | 0.4421  |
+
+
+
+---
+
+## ⚡ 5. Tokens/sec Benchmark
+
+### Results
+
+| Mask Ratio | Batch 1 | Batch 4 | Batch 8 | Batch 16 | Batch 32 |
+|-----------|--------|--------|--------|---------|---------|
+| 0.10      | 1005.37 | 1258.02 | 1228.35 | 967.95  | 491.73  |
+| 0.25      | 849.66  | 1220.08 | 1008.75 | 901.06  | 494.60  |
+| 0.40      | 896.66  | 1006.57 | 1133.80 | 942.99  | 597.95  |
+
+### Observations
+
+- Performance improves from Batch 1 → 4  
+- Optimal throughput at Batch 4–8  
+- Larger batches degrade due to memory limits  
+
+### Key Insight
+Optimal batch size ≈ 4–8
+
+---
+
+## ⏱️ 6. Latency Comparison (Batch vs Sequential)
+
+### Results
+
+Batch Time: 0.3413 sec  
+Sequential Time: 67.4623 sec  
+Speedup: 197.65×
+
+
+---
+
+### Interpretation
+
+- Batch inference uses parallel computation  
+- Sequential simulation recomputes full diffusion per token  
+
+---
+
+### Important Note
+
+- The ~200× speedup is an upper bound  
+- Sequential method is naive that recomputes the full diffusion process for each token independently(no caching)
+
+--- 
+<br>
+<br>
+
+# 📘 Task 2: Token-Level Noise Analysis — Confidence and Error Tracking
+
+## 🎯 Objective
+
+This task analyzes how the diffusion model behaves at the **token level across diffusion steps**, focusing on:
+
+- Confidence evolution  
+- Entropy reduction  
+- Error patterns  
+- Relationship between noise and prediction accuracy  
+
+---
+
+## 🧩 1. Tracking Token Distributions Across Steps
+
+To analyze model behavior, the predicted token distributions were stored at each diffusion step.
+
+### Implementation
+
+- Two vectors were created to store model predictions at each diffusion step:
+  - logits_per_step → stores raw logits
+  - probs_per_step → stores probability distributions
+
+### Insight
+
+- Enables step-wise tracking of:
+  - confidence  
+  - entropy  
+  - prediction stability  
+
+---
+
+## 📊 2. Confidence and Entropy Evolution
+
+
+### Observations
+*confidence_vs_step.png*  
+*entropy_vs_step.png*
+- Confidence rapidly increases from ~0.6 → ~0.99 within the first diffusion step
+- Entropy drops sharply from ~2.1 → near 0
+- Subsequent steps show minimal change  
+
+### Interpretation
+
+- Most uncertainty is resolved **very early**  
+- Later diffusion steps contribute **minimal refinement**  
+
+---
+
+## ⚠️ 3. Confident Mistakes Analysis
+
+### Results 
+*confident mistake_vs_step.png*
+
+Step 0: 0/25 (rate=0.0000)  
+Step 1: 16/25 (rate=0.6400)  
+Step 2: 15/25 (rate=0.6000)  
+Step 3: 15/25 (rate=0.6000)  
+Step 4: 16/25 (rate=0.6400)  
+Step 5: 16/25 (rate=0.6400)  
+Step 6: 15/25 (rate=0.6000)  
+Step 7: 15/25 (rate=0.6000)  
+Step 8: 15/25 (rate=0.6000)  
+Step 9: 15/25 (rate=0.6000)  
+Step 10: 15/25 (rate=0.6000)  
+Step 11: 16/25 (rate=0.6400)  
+
+### Critical Insight
+
+The model exhibits very high confidence early in the diffusion process (~0.99),  
+however ~60% of predictions are incorrect at early steps. 
+
+### Key Conclusion
+
+"The diffusion model does not know when it is wrong."
+
+---
+
+## 🔥 4. Entropy Heatmap Analysis
+
+### Observation
+*entropy_heatmap_correct.png*  
+*entropy_heatmap_incorrect.png*
+- Entropy drops rapidly even for incorrect predictions  
+- Model converges to low-entropy (high confidence) states prematurely  
+
+### Insight
+
+The model collapses to confident predictions too early,  
+even when those predictions are incorrect. 
+
+---
+
+## 📉 5. Noise vs Accuracy Analysis
+
+### Observation
+*accuracy_vs_step.png*
+- Accuracy does not increase smoothly across steps  
+- It remains relatively constant during intermediate steps  
+- Significant improvement occurs only at the final step  
+
+### Interpretation
+
+The model does not progressively refine predictions.  
+Instead, a major correction happens at the final diffusion step.
+
+---
+
+## 📊 6. Confidence Histogram Analysis
+
+### Observation
+*confidence histogram.png*
+- ~68% of tokens reach 90%+ confidence within the first diffusion step  
+- Remaining tokens reach high confidence shortly after  
+
+### Key Finding
+
+Despite rapid confidence saturation, many predictions are still incorrect.
+
+### Insight
+
+Confidence is NOT a reliable indicator of correctness in diffusion-based models.
+
+---
+
+
+<br>
+<br>
+
+
+
+# 📘 Task 3: Transition Probability Inspection and Markov Chain Visualization
+
+## 🎯 Objective
+
+This task analyzes the learned transition behavior of the diffusion model by treating it as a Markov process. The goal is to understand:
+
+- Token-to-token transition probabilities  
+- Evolution of predictions across diffusion steps  
+- Stationary distribution vs unigram frequency  
+- Common prediction errors (confusions)  
+- Alignment with linguistic (POS) patterns  
+
+---
+
+## 🧩 1. Transition Matrix Inspection
+
+### Example: Transitions for token "the"
+the: 0.4289  
+an: 0.0957  
+,: 0.0952  
+to: 0.0476  
+@: 0.0476  
+armored: 0.0476  
+turret: 0.0476  
+3rd: 0.0470  
+two: 0.0469  
+a: 0.0468  
+
+
+### Observation
+
+- Strong **self-loop** for frequent tokens like "the"  
+- Transitions to similar tokens ("a", "an")  
+- Indicates grammatical awareness  
+
+---
+
+### Example: Transitions for token "a"
+in: 0.4007  
+with: 0.2000  
+the: 0.1979  
+received: 0.1903  
+suffered: 0.0091  
+of: 0.0003  
+one: 0.0002  
+two: 0.0001  
+got: 0.0001  
+sustained: 0.0001 
+
+
+### Observation
+
+- Highly diverse transitions  
+- Includes:
+  - prepositions ("in", "with")  
+  - articles ("the")  
+  - verbs ("received")  
+
+### Insight
+
+"the" → stable token  
+"a" → flexible token
+
+
+---
+
+
+## 📈 2. Transition Probability Graph 
+
+*graph for T=0.png*  
+*Graph for T=11.png*
+
+### Early Step (T = 0)
+
+- All probabilities ~0.02–0.06  
+- No dominant token  
+- Includes noisy tokens:
+=,##us,.
+
+
+---
+
+### Late Step (T = 11)
+
+- Few dominant tokens:
+the, is, lobster, a
+
+- Strong edges:
+the -> 0.12
+is -> 0.08
+
+---
+### Insight
+Early → uncertain and noisy
+Late → confident and meaningful
+
+
+---
+
+## 🔄 3. Stationary Distribution vs Unigram Frequency
+
+### Stationary Distribution
+
+the: 0.1175  
+##us: 0.0784  
+is: 0.0783  
+,: 0.0588  
+a: 0.0392  
+lobster: 0.0392  
+length: 0.0392  
+##rus: 0.0392  
+or: 0.0390  
+crab: 0.0197  
+
+
+---
+
+### Unigram Distribution
+the: 0.0605  
+,: 0.0430  
+.: 0.0368  
+of: 0.0243  
+and: 0.0220  
+@: 0.0207  
+in: 0.0197  
+to: 0.0171  
+a: 0.0152  
+=: 0.0119
+
+
+---
+
+### Similarity
+Cosine similarity: 0.5594
+
+
+---
+
+### Insight
+
+- Overlap in common tokens:
+the, a, ,
+
+- Additional context-specific tokens:
+lobster, crab
+
+
+---
 
 ### Conclusion
-WikiText-2 (~2M tokens) is insufficient to train a strong language model from scratch.
-
----
-
-# Phase 2 — Pretrained BERT Baseline
-
-Used:
-
-```python
-BertForMaskedLM.from_pretrained("bert-base-uncased")
-```
-
-Fine-tuned on masked token prediction.
-
-### Results (9k sequences, 3 epochs, batch=32)
-
- Mask Type | Ratio | Train Accuracy | Validation Accuracy | Train Loss | Validation Loss |
-|------------|--------|----------------|---------------------|------------|-----------------|
-| Random     | 0.10   | 57.83          | 57.36               | 2.1694     | 2.2301          |
-| Random     | 0.25   | 53.07          | 51.85               | 2.4602     | 2.6114          |
-| Random     | 0.40   | 45.01          | 43.90               | 3.0190     | 3.2059          |
-| Span       | 0.10   | 20.45          | 21.23               | 5.1082     | 5.1766          |
-| Span       | 0.25   | 19.44          | 19.94               | 5.0969     | 5.2521          |
-| Span       | 0.40   | 17.51          | 17.91               | 5.2213     | 5.4480          |
-
-**Observation:** Random masking is significantly easier than span masking.
-
-### Results (73k sequences, 3 epochs, batch=32, span masking, span ratio - 0.25)
-Train Loss: **4.5502**
-
-Train Accuracy: **21.79%**
-
-Validation Loss: **5.4015**
-
-Validation Accuracy: **19.89%**
-
----
-
-# Phase 3 — Diffusion Model (Without Mask Conditioning)
-
-Implemented discrete forward corruption:
-
-- T diffusion timesteps
-- Gradual masking
-- Reverse denoising using BERT
-
-
-### Setup 1
-- Training:
-  - 6 epochs
-  - Batch size: 16
-  - Span masking
-  - Mask ratio: 0.25
-  - Mask type: Span
-  - 9k sequences
-- Goal: Compare diffusion vs single-step MLM baseline.
-
-Train Loss: **5.0208**
-
-Train Accuracy: **22.80%**
-
-Validation Loss: **4.9633**
-
-Validation Accuracy: **24.39%**
-
-### Setup 2
-- T = 12
-- Span masking = 0.25
-- Batch size = 16
-- Gradient accumulation = 2 (effective batch size = 32)
-- 73k sequences
-- 6 epochs
-
-### Result
-
-Train Loss: **4.5649**
-
-Train Accuracy: **26.08%**
-
-Validation Loss: **4.9749**
-
-Validation Accuracy: **24.58%**
-
----
-
-# Phase 4 — Diffusion With Mask Conditioning
-
-Added explicit mask embeddings so the model knows which tokens were originally masked.
-
----
-
-## T = 8 (Span 0.25)
-
-Train Loss: **3.3225**
-
-Train Accuracy: **42.65%**
-
-Validation Loss: **3.4671**
-
-Validation Accuracy: **42.89%**
-
----
-
-
-## T = 12 (Best Configuration)
-
-| Mask Type | Ratio | Train Accuracy% | Validation Accuracy% | Train Loss | Validation Loss |
-|------------|--------|----------------|---------------------|------------|-----------------|
-| Random     | 0.25   |     71.24      | 69.50               | 1.3612     | 1.5401          |
-| Span       | 0.10   |  49.84         |  50.82              |  2.9007    |  2.9259         |
-| Span       | 0.25   | 49.57          | 48.97               | 2.8369     | 3.0832          |
-| Span       | 0.40   |  46.55         | 46.49               |  3.0933    |   3.2812        |
-
----
-
-# Conditioning Dropout
-
-Added conditioning dropout (0.1) to reduce over-reliance on mask embeddings.
-
-Best Span 10% Result:
-
-Train Loss: **2.9033**
-
-Train Accuracy: **49.80%**
-
-Validation Loss: **2.9092**
-
-Validation Accuracy: **50.97%**
+Model behavious= Hybrid
 
 
 ---
 
+## 🔥 4. Diversity Across Diffusion Steps
 
-# Final Selected Model
+### 📊 Step-wise Examples
 
-Configuration:
+#### Step 0 (Early / Noisy)
 
-- Mask type: Span
-- Mask ratio: 0.10
-- Timestep: 12
-- Conditioning dropout: 0.1
-- Temperature: 0.8
-- Top-k: 20
-
----
-
-# Test Results
-
-Test Loss: **2.9221**  
-Test Accuracy: **51.14%**
-
----
-
-## Masked-Only Evaluation
-
-| Metric | Score |
-|---------|--------|
-| Masked BLEU | 0.0826 |
-| Masked ROUGE-L | 0.3484 |
-
-BLEU remains low due to strict n-gram matching.  
-ROUGE-L better captures structural similarity in span reconstruction.
-
----
-
-# Inference Decoding Experiments
-
-Tested:
-
-- Temperature: 0.8, 1.0, 1.2
-- Top-k: 0, 20, 50
-
-Best decoding configuration:
-
-```
-Temperature = 0.8
-Top-k = 20
-```
-
-Balanced diversity and coherence.
-
----
+,: 0.0618  
+is: 0.0422  
+##us: 0.0380  
+##rus: 0.0374  
+the: 0.0312  
+lobster: 0.0286  
+.: 0.0279  
+in: 0.0222  
+known: 0.0207  
+=: 0.0202
 
 
-# Gradio UI
+#### Step 5 (Mid)
+the: 0.1176  
+##us: 0.0978  
+is: 0.0788  
+,: 0.0589  
+a: 0.0562  
+lobster: 0.0392  
+length: 0.0392  
+or: 0.0391  
+it: 0.0285  
+of: 0.0202
 
-Interactive interface allows:
 
-- Paste input text
-- Auto span masking
-- Diffusion-based reconstruction
-- Highlight reconstructed tokens
-- Adjustable temperature
-- Adjustable top-k
+#### Step 11 (Late / Converged)
 
-Video_link :  https://drive.google.com/file/d/1Dli7Pqbi3G5PoX9ktUoxGgUH2dXZUfCr/view
+the: 0.1175  
+##us: 0.0784  
+is: 0.0783  
+,: 0.0588  
+a: 0.0392  
+lobster: 0.0392  
+length: 0.0392  
+##rus: 0.0392  
+or: 0.0390  
+crab: 0.0197
 
 
-# Project Structure
+### Observation
 
-```
-TEXT-INPAINTING_02/
-│
-├── data/
-│   ├── dataset.py
-│   ├── diffusion_dataset.py
-│   ├── load_data.py
-│   ├── masking.py
-│   └── preprocessing.py
-│
-├── diffusion/
-│   └── forward_process.py
-│
-├── evaluation/
-│   ├── bleu.py
-│   ├── metrics.py
-│   └── rouge.py
-│
-├── inference/
-│   ├── inpaint.py
-│   └── reverse_diffusion.py
-│
-├── models/
-│   ├── diffusion_model.py
-│   └── transformer.py
-│
-├── notebooks/
-│   └── 01_data_analysis.ipynb
-│
-├── training/
-│   ├── diffusion_trainer.py
-│   ├── loss.py
-│   └── trainer.py
-│
-├── utils/
-│   ├── device.py
-│   └── seed.py
-│
-├── app.py
-├── main.py
-├── requirements.txt
-├── README.md
-└── .gitignore
-```
+- Early steps → high diversity  
+- Late steps → reduced diversity  
 
 ---
 
-## Folder Responsibilities
+### Insight
+Diffusion = Explore → Collapse → Converge
 
-### `data/`
-Handles dataset loading, preprocessing, tokenization, and masking logic.
-
-### `diffusion/`
-Implements the forward corruption process for discrete diffusion.
-
-### `models/`
-Contains:
-- Baseline Transformer
-- DiffusionBert model with timestep + mask conditioning
-
-### `training/`
-Training loops for:
-- Baseline model
-- Diffusion model
-- Gradient accumulation logic
-
-### `inference/`
-Reverse diffusion sampling and inpainting pipeline.
-
-### `evaluation/`
-Implements:
-- BLEU score
-- ROUGE-L
-- Accuracy metrics
-
-### `utils/`
-Utility functions:
-- Device management (CPU / MPS)
-- Seed setting for reproducibility
-
-### `app.py`
-Gradio-based UI for interactive text inpainting.
-
-### `main.py`
-Entry point for:
-- Training
-- Validation
-- Testing
-- BLEU / ROUGE evaluation
-- Inference mode
 
 ---
 
+## 5. Confusion Matrix Analysis
 
-# Requirements
+### Top Confusions
+the → ,: 6  
+and → ,: 4  
+is → the: 4  
+sisters → was: 4  
+on → in: 4  
+american → japanese: 4  
+that → ,: 4  
+the → .: 3  
+the → she: 3  
+the → a: 3
 
-```
-torch
-transformers
-datasets
-tokenizers
-numpy
-pandas
-tqdm
-gradio
-nltk
-rouge-score
-```
 
 ---
 
+### Insight
 
+- Bias toward:
+  - punctuation (",", ".")  
+  - frequent words ("the", "a")  
 
-# Final Outcome
+- Some semantic awareness:
+american -> japanese
 
-Target: **35%+ masked-token accuracy**
-
-Final Achieved: **50%+ masked-token accuracy**
-
-This project demonstrates a complete diffusion-based text inpainting pipeline with training, evaluation, and interactive deployment.
-
-
-# How to Run the Project
-
-Follow the steps below to reproduce the experiments and run the UI locally.
 
 ---
 
-## 1. Clone the Repository
+### Conclusion
+Model prefers high-probability tokens under uncertainty
 
-```bash
-git clone https://github.com/devguptagrid/Text_Inpainting_Project_02.git
-cd Text_Inpainting_Project_02
-```
-## 2. Create Virtual Environment
-#### Mac/Linux
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
 
-#### Windows
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
+---
 
-## 3. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
+## 🧠 6. POS Transition Analysis
 
-## 4. Running the project 
-### Train Baseline Model
-```bash
-python main.py --mode train_baseline
-```
+### Results
 
-### Train Diffusion Model
-```bash
-python main.py --mode diffusion
-```
+NN → NN: 81  
+NN → IN: 20  
+IN → IN: 20  
+NN → DT: 17  
+DT → DT: 15  
+CD → NN: 10  
+. → .: 10  
+NN → CD: 9  
+NN → JJ: 8  
+NN → NNS: 7
 
-### Run evaluation
-```bash
-python main.py --mode test
-```
 
-### Run inference
-```bash
-python main.py --mode inference
-```
+---
 
-### Run Gradio UI
-```bash
-python app.py
-```
+### Insight
 
-### Using the UI
+- Strong grammatical consistency:
 
-#### Steps:
+NN → NN  
+IN → IN  
+DT → DT
 
-- Paste any input sentence
 
-- The system automatically applies span masking
+- Some invalid transitions:
 
-- The diffusion model reconstructs the masked tokens
+NN → DT  
+NN → CD
 
-- Reconstructed tokens appear highlighted in green
 
-- You can also adjust:
-    - Temperature – controls randomness
+---
 
-    - Top-k – restricts tokens sampling to top-k candidates
+### Conclusion
+Model captures grammar partially, not strictly
+
+<br>
+<br>
+
+# 📘 Task 4: Controlled Generation via Latent Manipulation — Span-Level Steering
+
+## 🎯 Objective
+
+This task introduces **controlled generation** in diffusion-based text inpainting by manipulating the sampling process without retraining. The goal is to:
+
+- Guide generation toward desired attributes (e.g., simplicity)  
+- Apply span-level constraints  
+- Control refinement using soft masking  
+- Evaluate trade-offs between quality and control  
+
+---
+
+## 🧩 1. Steering Mechanism (Logit Manipulation)
+
+A steering mechanism was implemented by modifying token logits during reverse diffusion sampling.
+
+### Implementation
+
+- Logits are adjusted at each step to bias token selection  
+- No retraining required  
+
+
+---
+
+## 🔧 2. Guidance Function (Heuristic Control)
+
+A heuristic guidance function was designed to favor **simple and common tokens**.
+
+### Description
+
+- Reward short/common tokens  
+- Penalize longer/complex tokens  
+- Modify logits before sampling 
+
+*with_guidance_1.0_20%.png*  
+*with_guidance_1.5_20%.png*  
+*with_guidance_2.0_20%.png*
+*without_guidance_20%.png*
+
+### Insight
+The model can be steered toward desired attributes without changing weights
+
+
+---
+
+## 🔗 3. Span-Level Steering
+
+Different masked spans are assigned different constraints.
+
+### Implementation
+
+- Apply reward + penalty selectively per span  
+- Example:
+  - Encourage simple words in specific spans  
+
+*simple_word_reward_and_penalty.png*
+
+### Insight
+Fine-grained control at span level enables targeted generation
+
+
+---
+
+## 🧪 4. Soft Masking (Confidence-Based Control)
+
+Instead of binary masking, continuous weights are used.
+
+
+### Insight
+
+- Masked tokens → strong refinement (1.0)  
+- Unmasked tokens → weaker updates (0.2)  
+
+
+---
+
+## 📊 5. Guidance Strength vs Generation Quality
+
+### Results
+--- Guidance Strength: 0.5 ---  
+BLEU: 0.0826  
+% Short Tokens: 0.8359
+
+--- Guidance Strength: 1.0 ---  
+BLEU: 0.0845  
+% Short Tokens: 0.8760
+
+--- Guidance Strength: 1.5 ---  
+BLEU: 0.0799  
+% Short Tokens: 0.9106
+
+--- Guidance Strength: 2.0 ---  
+BLEU: 0.0804  
+% Short Tokens: 0.9296
+
+
+---
+
+### Observations
+
+- Increasing guidance strength:
+  - increases constraint satisfaction (% short tokens)  
+  - slightly reduces BLEU (quality)  
+
+---
+## 🔬 6. Comparison with Classifier-Free Guidance
+
+Performance compared with and without mask dropout.
+
+---
+
+### Without Dropout
+
+| Setting  | Train Acc | Val Acc |
+|----------|----------|---------|
+| Span 10% | 49.84    | 50.82   |
+
+---
+
+### With Dropout 0.1
+
+| Setting  | Train Acc | Val Acc |
+|----------|----------|---------|
+| Span 10% | 49.80    | 50.97   |
+
+---
+
+### Insight
+
+- Slight improvement in validation accuracy with dropout  
+- Indicates better generalization  
+
+---
+
+### Conclusion
+Classifier-free guidance (dropout) improves robustness slightly
+
+<br>
+<br>
+
+# 📘 Task 5: Memory Profiling and Generation Diversity Analysis Across Mask Ratios
+
+## 🎯 Objective
+
+This task evaluates the **memory efficiency** and **generation diversity** of the diffusion model across different mask ratios. The goal is to:
+
+- Profile memory usage across masking settings  
+- Analyze diversity metrics across generated samples  
+- Study the trade-off between diversity and accuracy  
+- Identify system bottlenecks and propose optimizations  
+
+---
+
+## 🧩 1, 2. Memory Profiling Across Mask Ratios
+
+Memory usage was analyzed for different mask ratios (10%, 25%, 40%, 60%).
+
+### Results
+Model Parameters: 109,525,050  
+Model Size: 417.80 MB  
+Initial Memory: 417.82 MB  
+Peak Memory Usage: 417.92 MB  
+Estimated Activation Memory: 144.00 MB
+
+### Key Insight
+
+
+Memory usage is independent of mask ratio
+
+### Note
+
+- BERT-based architecture → no KV cache 
+
+---
+
+## 📊 3. Diversity Metrics Across Mask Ratios
+
+50 samples were generated per mask ratio and evaluated using:
+
+- Self-BLEU (↓ lower = more diverse)  
+- N-gram Entropy (↑ higher = more diverse)  
+- Unique Bigrams % (↑ higher = more diverse)  
+
+---
+
+###  Results
+
+| Mask Ratio | Self-BLEU ↓ | Entropy ↑ | Unique Bigrams ↑ |
+|-----------|------------|----------|------------------|
+| 0.10      | 0.9227     | 6.86     | 0.1467           |
+| 0.25      | 0.8263     | 7.10     | 0.2095           |
+| 0.40      | 0.7375     | 7.21     | 0.2473           |
+| 0.60      | 0.6418     | 7.12     | 0.2598           |
+
+---
+
+###  Insight
+
+- Increasing mask ratio:
+  - ↓ Self-BLEU  
+  - ↑ Entropy  
+  - ↑ Unique bigrams  
+
+---
+
+### Conclusion
+Higher mask ratio → higher diversity
+
+
+---
+
+## 📉 4. Diversity vs Accuracy Trade-off
+
+###  Results
+
+| Mask Ratio | Accuracy ↓ | Entropy ↑ | Self-BLEU ↓ |
+|-----------|-----------|----------|------------|
+| 0.10      | 0.2320    | 6.86     | 0.92       |
+| 0.25      | 0.1922    | 7.10     | 0.83       |
+| 0.40      | 0.1639    | 7.21     | 0.74       |
+| 0.60      | 0.1207    | 7.12     | 0.64       |
+
+---
+
+### Observations
+*diversity_vs_accuracy.png*
+- Accuracy decreases steadily with mask ratio  
+- Diversity increases (entropy ↑, BLEU ↓)  
+
+---
+
+### Interpretation
+More tokens to generate → harder task → more randomness
+
+
+---
+
+## 🔄 5. Effect of Mask Ratio on Diversity
+
+###  Trends
+Entropy: 6.86 → 7.21 → 7.12  
+Self-BLEU: 0.92 → 0.64  
+Unique bigrams: 0.14 → 0.26
+
+### Insight
+
+- More masked tokens:
+  - Less context  
+  - More uncertainty  
+  - More variation  
+
+
+---
+
+## ⚠️ 6. Memory Bottlenecks
+
+### 1. Model Weights (Largest)
+
+- ~418 MB  
+- Comes from:
+  - transformer layers  
+  - embeddings  
+
+---
+
+### 2. Activations (Second Largest)
+
+- ~144 MB  
+- Depends on:
+batch_size × seq_len × hidden_size × layers
+
+---
+
+### 3. Diffusion Steps
+
+- T = 12  
+- Each step:
+- forward pass  
+- stores logits/probabilities  
+
+---
+
+## Optimization Strategies
+
+### 1. Mixed Precision (FP16)
+- Reduces memory by ~50%  
+
+---
+
+### 2. Reduce Sequence Length
+
+- Truncate long inputs  
+- Reduces activation memory  
+
+---
+
+### 3. Gradient Checkpointing
+
+- Stores fewer activations  
+- Recomputes during backward pass  
+
+---
