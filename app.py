@@ -26,7 +26,7 @@ model = DiffusionBert(## Initializes the diffusion model with the specified para
 ).to(device)
 
 model.load_state_dict( ## Loads the trained model weights from the specified file, mapping them to the appropriate device for inference.
-    torch.load("diffusion_span_0.1_T12_dropout_0.1.pt", map_location=device)
+    torch.load("diffusion_span_multi_ratio_T12_dropout_0.1.pt", map_location=device)
 )
 
 model.eval()
