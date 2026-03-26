@@ -14,7 +14,7 @@ from utils.device import get_device
 # Load Model Once (Global)
 # =============================
 
-device = get_device()
+device = "cpu"
 tokenizer = get_tokenizer()
 
 T = 12
