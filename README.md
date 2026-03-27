@@ -1,5 +1,7 @@
 # 44. Text Inpainting (Span Fill)
 
+# Demo on Hugging Face
+[https://huggingface.co/spaces/Devanshu2402/text-inpainting-diffusion](https://huggingface.co/spaces/Devanshu2402/text-inpainting-diffusion)
 # 📘 Task 1: Batched Inpainting with Parallel Mask Conditioning
 
 ## 🎯 Objective
