@@ -9,7 +9,7 @@ from inference.reverse_diffusion import reverse_diffusion_sample
 from data.masking import apply_masking
 from data.preprocessing import get_tokenizer
 from utils.device import get_device
-
+from huggingface_hub import hf_hub_download
 # =============================
 # Load Model Once (Global)
 # =============================
@@ -20,21 +20,39 @@ tokenizer = get_tokenizer()
 T = 12
 mask_ratio = 0.10
 
-model = DiffusionBert(## Initializes the diffusion model with the specified parameters, including the number of diffusion steps (T), the mask token ID from the tokenizer, and a conditioning dropout rate, and moves it to the appropriate device for inference.
-    T=T,
-    conditioning_dropout=0.1
-).to(device)
 
-model.load_state_dict( ## Loads the trained model weights from the specified file, mapping them to the appropriate device for inference.
-    torch.load("diffusion_span_multi_ratio_T12_dropout_0.1.pt", map_location=device)
-)
 
-model.eval()
+MODEL_REPO = "Devanshu2402/Text_Inpainting_Diffusion_Model"
+model = None
+diffusion_forward = None
+def load_model():
+    global model, diffusion_forward
 
-diffusion_forward = DiscreteDiffusionForward( ## Initializes the forward diffusion process with the specified number of steps (T) and the mask token ID from the tokenizer, and moves it to the appropriate device for inference.
-    T=T,
-    mask_token_id=tokenizer.mask_token_id
-).to(device)
+    if model is None:
+        print("Downloading model from HF...")
+
+        model_path = hf_hub_download(
+            repo_id=MODEL_REPO,
+            filename="diffusion_span_multi_ratio_T12_dropout_0.1.pt"
+        )
+
+        print("Loading model...")
+
+        model = DiffusionBert(
+            T=12,
+            conditioning_dropout=0.1
+        ).to(device)
+
+        model.load_state_dict(
+            torch.load(model_path, map_location=device)
+        )
+
+        model.eval()
+
+        diffusion_forward = DiscreteDiffusionForward(
+            T=12,
+            mask_token_id=tokenizer.mask_token_id
+        ).to(device)
 
 
 # =============================
@@ -64,7 +82,7 @@ def highlight_tokens(masked_ids, generated_ids, mask_positions):
 # =============================
 
 def inpaint(text, temperature, top_k): ## Main function to perform text inpainting. It takes the input text, applies masking, runs the reverse diffusion process to generate inpainted text, and decodes the output back to a string.
-
+    load_model()
     encoded = tokenizer(
     text,
     return_tensors="pt",
